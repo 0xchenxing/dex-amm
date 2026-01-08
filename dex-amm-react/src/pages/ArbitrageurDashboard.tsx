@@ -1,0 +1,259 @@
+import { useState, useEffect } from 'react';
+import { Layout } from '../components/Layout';
+
+import { useNotification } from '../hooks/useNotification';
+import { arbitrageStorage } from '../services/storage';
+import type { ArbitrageOpportunity } from '../types';
+import './ArbitrageurDashboard.css';
+
+const navItems: Array<{ path: string; label: string; icon: string }> = [];
+
+export function ArbitrageurDashboard() {
+
+  const { showNotification, NotificationComponent } = useNotification();
+  const [activeSection, setActiveSection] = useState('overview');
+  const [opportunities, setOpportunities] = useState<ArbitrageOpportunity[]>([]);
+  const [autoTrading, setAutoTrading] = useState(false);
+  const [minProfit, setMinProfit] = useState('10');
+  const [maxVolume, setMaxVolume] = useState('100');
+
+  useEffect(() => {
+    loadData();
+    // 模拟实时更新套利机会
+    const interval = setInterval(() => {
+      loadData();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadData = () => {
+    const allOpportunities = arbitrageStorage.getAll();
+    setOpportunities(allOpportunities);
+  };
+
+  const executeArbitrage = () => {
+    showNotification('套利交易执行成功', 'success');
+    loadData();
+  };
+
+  const toggleAutoTrading = () => {
+    setAutoTrading(!autoTrading);
+    showNotification(
+      autoTrading ? '自动交易已关闭' : '自动交易已开启',
+      'success'
+    );
+  };
+
+  const renderOverview = () => (
+    <>
+      <h2 className="section-title">套利概览</h2>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">$5,250.80</div>
+          <div className="stat-label">总利润</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">92.5%</div>
+          <div className="stat-label">成功率</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{opportunities.length}</div>
+          <div className="stat-label">当前机会</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">156</div>
+          <div className="stat-label">总交易次数</div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderOpportunities = () => (
+    <>
+      <h2 className="section-title">套利机会发现</h2>
+      <div className="opportunities-list">
+        {opportunities.map(opp => (
+          <div key={opp.id} className="opportunity-card">
+            <div className="opportunity-header">
+              <h3>{opp.pair}</h3>
+              <span className={`profit-badge ${opp.profit > 0 ? 'positive' : 'negative'}`}>
+                {opp.profit > 0 ? '+' : ''}${opp.profit.toFixed(2)}
+              </span>
+            </div>
+            <div className="opportunity-details">
+              <div className="detail-row">
+                <span className="detail-label">交易所1:</span>
+                <span className="detail-value">{opp.exchange1}</span>
+                <span className="detail-price">${opp.price1.toFixed(2)}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">交易所2:</span>
+                <span className="detail-value">{opp.exchange2}</span>
+                <span className="detail-price">${opp.price2.toFixed(2)}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">价差:</span>
+                <span className={`detail-value ${opp.spread > 0 ? 'positive' : 'negative'}`}>
+                  {opp.spread > 0 ? '+' : ''}{opp.spread.toFixed(2)}%
+                </span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">交易量:</span>
+                <span className="detail-value">{opp.volume}</span>
+              </div>
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={() => executeArbitrage()}
+              disabled={opp.profit <= 0}
+            >
+              执行套利
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
+  const renderAutoTrading = () => (
+    <>
+      <h2 className="section-title">自动交易设置</h2>
+      <div className="auto-trading-card">
+        <div className="toggle-section">
+          <div className="toggle-info">
+            <h3>自动套利交易</h3>
+            <p>开启后系统将自动执行符合条件的套利机会</p>
+          </div>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={autoTrading}
+              onChange={toggleAutoTrading}
+            />
+            <span className="slider"></span>
+          </label>
+        </div>
+
+        <div className="settings-grid">
+          <div className="form-group">
+            <label>最小利润 (USDT)</label>
+            <input
+              type="number"
+              value={minProfit}
+              onChange={(e) => setMinProfit(e.target.value)}
+              placeholder="10"
+            />
+          </div>
+          <div className="form-group">
+            <label>最大交易量</label>
+            <input
+              type="number"
+              value={maxVolume}
+              onChange={(e) => setMaxVolume(e.target.value)}
+              placeholder="100"
+            />
+          </div>
+        </div>
+
+        <div className="strategy-info">
+          <h4>当前策略</h4>
+          <ul>
+            <li>最小利润阈值: ${minProfit} USDT</li>
+            <li>最大单笔交易量: {maxVolume}</li>
+            <li>风险控制: 启用</li>
+            <li>滑点保护: 0.5%</li>
+          </ul>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderAnalysis = () => (
+    <>
+      <h2 className="section-title">收益分析</h2>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">$5,250.80</div>
+          <div className="stat-label">累计利润</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">$125.50</div>
+          <div className="stat-label">日均利润</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">92.5%</div>
+          <div className="stat-label">成功率</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">156</div>
+          <div className="stat-label">总交易次数</div>
+        </div>
+      </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>交易对</th>
+              <th>交易所</th>
+              <th>利润</th>
+              <th>交易量</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#7f8c8d' }}>
+                暂无交易记录
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+
+  return (
+    <Layout navItems={navItems}>
+      <div className="header">
+        <h1 className="header-title">套利者仪表板</h1>
+      </div>
+
+      <div className="section-tabs">
+        <button
+          className={`tab-btn ${activeSection === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveSection('overview')}
+        >
+          套利概览
+        </button>
+        <button
+          className={`tab-btn ${activeSection === 'opportunities' ? 'active' : ''}`}
+          onClick={() => setActiveSection('opportunities')}
+        >
+          机会发现
+        </button>
+        <button
+          className={`tab-btn ${activeSection === 'autotrading' ? 'active' : ''}`}
+          onClick={() => setActiveSection('autotrading')}
+        >
+          自动交易
+        </button>
+        <button
+          className={`tab-btn ${activeSection === 'analysis' ? 'active' : ''}`}
+          onClick={() => setActiveSection('analysis')}
+        >
+          收益分析
+        </button>
+      </div>
+
+      <div className="content-section">
+        {activeSection === 'overview' && renderOverview()}
+        {activeSection === 'opportunities' && renderOpportunities()}
+        {activeSection === 'autotrading' && renderAutoTrading()}
+        {activeSection === 'analysis' && renderAnalysis()}
+      </div>
+
+      {NotificationComponent}
+    </Layout>
+  );
+}
+
