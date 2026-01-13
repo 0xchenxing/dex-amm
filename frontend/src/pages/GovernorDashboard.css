@@ -1,0 +1,209 @@
+@import './TraderDashboard.css';
+
+.create-proposal-card {
+  background: var(--bg-glass);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-xl);
+}
+
+.create-proposal-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-primary);
+}
+
+.proposals-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.proposal-card {
+  background: var(--bg-glass);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.proposal-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-glow);
+}
+
+.proposal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.proposal-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.proposal-status {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.proposal-status.active {
+  background: rgba(79, 172, 254, 0.2);
+  color: #00f2fe;
+  border: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.proposal-status.pending {
+  background: rgba(250, 112, 154, 0.2);
+  color: #fee140;
+  border: 1px solid rgba(250, 112, 154, 0.3);
+}
+
+.proposal-status.passed {
+  background: rgba(79, 172, 254, 0.2);
+  color: #00f2fe;
+  border: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.proposal-description {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-md);
+}
+
+.proposal-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.info-item span:first-child {
+  color: var(--text-muted);
+}
+
+.info-item span:last-child {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.proposal-votes {
+  margin-top: var(--spacing-md);
+}
+
+.vote-bar {
+  display: flex;
+  height: 40px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--spacing-md);
+  background: var(--bg-secondary);
+}
+
+.vote-for {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  transition: width 0.5s ease;
+}
+
+.vote-against {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  transition: width 0.5s ease;
+}
+
+.vote-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.vote-actions .btn {
+  flex: 1;
+}
+
+.parameters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.parameter-card {
+  background: var(--bg-glass);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.parameter-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-glow);
+}
+
+.parameter-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.parameter-value {
+  font-size: 32px;
+  font-weight: 800;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--spacing-lg);
+}
+
+.parameter-card .btn {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .proposal-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .vote-actions {
+    flex-direction: column;
+  }
+  
+  .parameters-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

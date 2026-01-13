@@ -1,0 +1,235 @@
+@import './TraderDashboard.css';
+
+.recent-logs {
+  margin-top: var(--spacing-xl);
+}
+
+.recent-logs h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.log-item {
+  display: grid;
+  grid-template-columns: 200px 100px 1fr;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-glass);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+}
+
+.log-time {
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+}
+
+.log-category {
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.log-message {
+  color: var(--text-primary);
+}
+
+.log-info {
+  border-left: 4px solid #4facfe;
+}
+
+.log-warning {
+  border-left: 4px solid #fee140;
+}
+
+.log-error {
+  border-left: 4px solid #fa709a;
+}
+
+.search-bar {
+  margin-bottom: var(--spacing-lg);
+}
+
+.search-input {
+  max-width: 400px;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: rgba(79, 172, 254, 0.2);
+  color: #00f2fe;
+  border: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.pools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.pool-admin-card {
+  background: var(--bg-glass);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.pool-admin-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-glow);
+}
+
+.pool-admin-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.pool-admin-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.admin-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.admin-stat span:first-child {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.admin-stat span:last-child {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.admin-stat span:last-child.positive {
+  color: #00f2fe;
+}
+
+.pool-admin-card .btn {
+  width: 100%;
+}
+
+.security-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.log-level-badge {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.log-level-badge.info {
+  background: rgba(79, 172, 254, 0.2);
+  color: #00f2fe;
+}
+
+.log-level-badge.warning {
+  background: rgba(250, 112, 154, 0.2);
+  color: #fee140;
+}
+
+.log-level-badge.error {
+  background: rgba(250, 112, 154, 0.3);
+  color: #fee140;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.setting-card {
+  background: var(--bg-glass);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.setting-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-primary);
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-item span:first-child {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.setting-item span:nth-child(2) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.setting-item .btn {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .log-item {
+    grid-template-columns: 1fr;
+  }
+  
+  .pools-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+}
+
