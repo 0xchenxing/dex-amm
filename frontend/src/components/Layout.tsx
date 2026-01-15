@@ -6,10 +6,13 @@ import './Layout.css';
 
 interface LayoutProps {
   children: ReactNode;
-  navItems?: Array<{ path: string; label: string; icon: string }>;
+  navItems?: Array<{ key: string; label: string; icon: string }>;
+  activeSection?: string;
+  onSectionChange?: (section: string) => void;
+  dashboardTitle?: string;
 }
 
-export function Layout({ children, navItems }: LayoutProps) {
+export function Layout({ children, navItems, activeSection, onSectionChange, dashboardTitle }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -55,8 +58,8 @@ export function Layout({ children, navItems }: LayoutProps) {
             {navItems.map((item, index) => (
               <div
                 key={index}
-                className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
-                onClick={() => item.path && navigate(item.path)}
+                className={`nav-item ${activeSection === item.key ? 'active' : ''}`}
+                onClick={() => onSectionChange && onSectionChange(item.key)}
               >
                 <div className="nav-link">
                   <span className="nav-icon">{item.icon}</span>
@@ -85,6 +88,11 @@ export function Layout({ children, navItems }: LayoutProps) {
 
       <div className="main-content">
         <div className="top-bar">
+          {dashboardTitle && (
+            <div className="dashboard-title-container">
+              <h1 className="dashboard-title">{dashboardTitle}</h1>
+            </div>
+          )}
           <div className="wallet-container">
             <ConnectButton />
           </div>

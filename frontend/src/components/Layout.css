@@ -182,21 +182,37 @@
 }
 
 .top-bar {
-  padding: var(--spacing-lg);
-  background: var(--bg-secondary);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   position: sticky;
   top: 0;
   z-index: 10;
   backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-title-container {
+  flex: 1;
+}
+
+.dashboard-title {
+  font-size: 32px;
+  font-weight: 800;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -1px;
+  margin: 0;
 }
 
 .content-wrapper {
   flex: 1;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
   overflow-y: auto;
 }
 

@@ -6,7 +6,12 @@ import { governanceStorage } from '../services/storage';
 import type { GovernanceProposal } from '../types';
 import './GovernorDashboard.css';
 
-const navItems: Array<{ path: string; label: string; icon: string }> = [];
+const navItems: Array<{ key: string; label: string; icon: string }> = [
+  { key: 'overview', label: '治理概览', icon: '📊' },
+  { key: 'proposals', label: '提案管理', icon: '📋' },
+  { key: 'parameters', label: '协议参数', icon: '⚙️' },
+  { key: 'history', label: '投票历史', icon: '📜' },
+];
 
 export function GovernorDashboard() {
   const { user } = useAuth();
@@ -229,41 +234,13 @@ export function GovernorDashboard() {
   );
 
   return (
-    <Layout navItems={navItems}>
-      <div className="dashboard-header">
-        <h1 className="header-title">治理者仪表板</h1>
-      </div>
-
-      <div className="section-tabs">
-        <button
-          className={`tab-btn ${activeSection === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveSection('overview')}
-        >
-          <span>📊</span>
-          <span>治理概览</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'proposals' ? 'active' : ''}`}
-          onClick={() => setActiveSection('proposals')}
-        >
-          <span>📋</span>
-          <span>提案管理</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'parameters' ? 'active' : ''}`}
-          onClick={() => setActiveSection('parameters')}
-        >
-          <span>⚙️</span>
-          <span>协议参数</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveSection('history')}
-        >
-          <span>📜</span>
-          <span>投票历史</span>
-        </button>
-      </div>
+    <Layout 
+      navItems={navItems} 
+      activeSection={activeSection} 
+      onSectionChange={setActiveSection}
+      dashboardTitle="治理者仪表板"
+    >
+      {/* 钱包连接状态已移至顶部导航栏 */}
 
       <div className="content-section glass fade-in">
         {activeSection === 'overview' && renderOverview()}

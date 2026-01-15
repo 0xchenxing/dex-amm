@@ -5,7 +5,14 @@ import { userStorage, tradeStorage, systemLogStorage, liquidityPoolStorage } fro
 import type { SystemLog } from '../types';
 import './AdminDashboard.css';
 
-const navItems: Array<{ path: string; label: string; icon: string }> = [];
+const navItems: Array<{ key: string; label: string; icon: string }> = [
+  { key: 'overview', label: '系统概览', icon: '📊' },
+  { key: 'users', label: '用户管理', icon: '👥' },
+  { key: 'trades', label: '交易监控', icon: '💱' },
+  { key: 'liquidity', label: '流动性管理', icon: '💧' },
+  { key: 'security', label: '安全管理', icon: '🔒' },
+  { key: 'settings', label: '系统设置', icon: '⚙️' },
+];
 
 export function AdminDashboard() {
   const { showNotification, NotificationComponent } = useNotification();
@@ -289,55 +296,13 @@ export function AdminDashboard() {
   );
 
   return (
-    <Layout navItems={navItems}>
-      <div className="dashboard-header">
-        <h1 className="header-title">管理员仪表板</h1>
-      </div>
-
-      <div className="section-tabs">
-        <button
-          className={`tab-btn ${activeSection === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveSection('overview')}
-        >
-          <span>📊</span>
-          <span>系统概览</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'users' ? 'active' : ''}`}
-          onClick={() => setActiveSection('users')}
-        >
-          <span>👥</span>
-          <span>用户管理</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'trades' ? 'active' : ''}`}
-          onClick={() => setActiveSection('trades')}
-        >
-          <span>💱</span>
-          <span>交易监控</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'liquidity' ? 'active' : ''}`}
-          onClick={() => setActiveSection('liquidity')}
-        >
-          <span>💧</span>
-          <span>流动性管理</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'security' ? 'active' : ''}`}
-          onClick={() => setActiveSection('security')}
-        >
-          <span>🔒</span>
-          <span>安全管理</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveSection('settings')}
-        >
-          <span>⚙️</span>
-          <span>系统设置</span>
-        </button>
-      </div>
+    <Layout 
+      navItems={navItems} 
+      activeSection={activeSection} 
+      onSectionChange={setActiveSection}
+      dashboardTitle="管理员仪表板"
+    >
+      {/* 钱包连接状态已移至顶部导航栏 */}
 
       <div className="content-section glass fade-in">
         {activeSection === 'overview' && renderOverview()}

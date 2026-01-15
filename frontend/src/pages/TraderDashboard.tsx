@@ -7,7 +7,13 @@ import { connectToEthereum, getAccountAddress, executeUniswapTrade } from '../se
 import type { Trade, TradingPair } from '../types';
 import './TraderDashboard.css';
 
-const navItems: Array<{ path: string; label: string; icon: string }> = [];
+const navItems: Array<{ key: string; label: string; icon: string }> = [
+  { key: 'overview', label: '交易概览', icon: '📊' },
+  { key: 'trading', label: '现货交易', icon: '💱' },
+  { key: 'orders', label: '订单管理', icon: '📋' },
+  { key: 'portfolio', label: '资产组合', icon: '💼' },
+  { key: 'history', label: '交易历史', icon: '📜' },
+];
 
 export function TraderDashboard() {
   const { user } = useAuth();
@@ -485,60 +491,21 @@ export function TraderDashboard() {
   );
 
   return (
-    <Layout navItems={navItems}>
-      <div className="dashboard-header">
-        <h1 className="header-title">交易者仪表板</h1>
-        <div className="header-badge">
-          {isConnected ? (
-            <span className="connected-badge">
-              <span className="badge-dot"></span>
-              已连接
-            </span>
-          ) : (
+    <Layout 
+      navItems={navItems} 
+      activeSection={activeSection} 
+      onSectionChange={setActiveSection}
+      dashboardTitle="交易者仪表板"
+    >
+      {!isConnected && (
+        <div className="dashboard-header">
+          <div className="header-badge">
             <button className="btn btn-primary" onClick={connectToMetaMask}>
               连接钱包
             </button>
-          )}
+          </div>
         </div>
-      </div>
-
-      <div className="section-tabs">
-        <button
-          className={`tab-btn ${activeSection === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveSection('overview')}
-        >
-          <span>📊</span>
-          <span>交易概览</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'trading' ? 'active' : ''}`}
-          onClick={() => setActiveSection('trading')}
-        >
-          <span>💱</span>
-          <span>现货交易</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'orders' ? 'active' : ''}`}
-          onClick={() => setActiveSection('orders')}
-        >
-          <span>📋</span>
-          <span>订单管理</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'portfolio' ? 'active' : ''}`}
-          onClick={() => setActiveSection('portfolio')}
-        >
-          <span>💼</span>
-          <span>资产组合</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveSection('history')}
-        >
-          <span>📜</span>
-          <span>交易历史</span>
-        </button>
-      </div>
+      )}
 
       <div className="content-section glass fade-in">
         {activeSection === 'overview' && renderOverview()}

@@ -5,7 +5,12 @@ import { arbitrageStorage } from '../services/storage';
 import type { ArbitrageOpportunity } from '../types';
 import './ArbitrageurDashboard.css';
 
-const navItems: Array<{ path: string; label: string; icon: string }> = [];
+const navItems: Array<{ key: string; label: string; icon: string }> = [
+  { key: 'overview', label: '套利概览', icon: '📊' },
+  { key: 'opportunities', label: '机会发现', icon: '🔍' },
+  { key: 'autotrading', label: '自动交易', icon: '🤖' },
+  { key: 'analysis', label: '收益分析', icon: '📈' },
+];
 
 export function ArbitrageurDashboard() {
   const { showNotification, NotificationComponent } = useNotification();
@@ -216,41 +221,13 @@ export function ArbitrageurDashboard() {
   );
 
   return (
-    <Layout navItems={navItems}>
-      <div className="dashboard-header">
-        <h1 className="header-title">套利者仪表板</h1>
-      </div>
-
-      <div className="section-tabs">
-        <button
-          className={`tab-btn ${activeSection === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveSection('overview')}
-        >
-          <span>📊</span>
-          <span>套利概览</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'opportunities' ? 'active' : ''}`}
-          onClick={() => setActiveSection('opportunities')}
-        >
-          <span>🔍</span>
-          <span>机会发现</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'autotrading' ? 'active' : ''}`}
-          onClick={() => setActiveSection('autotrading')}
-        >
-          <span>🤖</span>
-          <span>自动交易</span>
-        </button>
-        <button
-          className={`tab-btn ${activeSection === 'analysis' ? 'active' : ''}`}
-          onClick={() => setActiveSection('analysis')}
-        >
-          <span>📈</span>
-          <span>收益分析</span>
-        </button>
-      </div>
+    <Layout 
+      navItems={navItems} 
+      activeSection={activeSection} 
+      onSectionChange={setActiveSection}
+      dashboardTitle="套利者仪表板"
+    >
+      {/* 钱包连接状态已移至顶部导航栏 */}
 
       <div className="content-section glass fade-in">
         {activeSection === 'overview' && renderOverview()}
