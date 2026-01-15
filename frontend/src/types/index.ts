@@ -3,7 +3,7 @@ export type UserRole = 'trader' | 'liquidity' | 'governor' | 'arbitrageur' | 'ad
 
 // 用户数据
 export interface User {
-  id: string;
+  id: number;
   username: string;
   password: string;
   role: UserRole;
