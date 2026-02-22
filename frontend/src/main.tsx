@@ -11,15 +11,24 @@ import App from './App.tsx'
 const config = createConfig({
   chains: [mainnet, polygon, optimism, arbitrum, sepolia],
   transports: {
-    [mainnet.id]: http(),
-    [polygon.id]: http(),
-    [optimism.id]: http(),
-    [arbitrum.id]: http(),
-    [sepolia.id]: http(),
+    [mainnet.id]: http('https://eth.llamarpc.com'),
+    [polygon.id]: http('https://polygon.llamarpc.com'),
+    [optimism.id]: http('https://optimism.llamarpc.com'),
+    [arbitrum.id]: http('https://arbitrum.llamarpc.com'),
+    [sepolia.id]: http('https://rpc.sepolia.org'),
   },
 })
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 3,
+      staleTime: 30000,
+    },
+  },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

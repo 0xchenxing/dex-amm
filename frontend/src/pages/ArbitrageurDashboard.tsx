@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useNotification } from '../hooks/useNotification';
-import { arbitrageStorage } from '../services/storage';
+import { arbitrageAPI } from '../services/apiService';
 import type { ArbitrageOpportunity } from '../types';
 import './ArbitrageurDashboard.css';
 
@@ -28,22 +28,39 @@ export function ArbitrageurDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const loadData = () => {
-    const allOpportunities = arbitrageStorage.getAll();
-    setOpportunities(allOpportunities);
+  const loadData = async () => {
+    try {
+      const allOpportunities = await arbitrageAPI.getAll();
+      setOpportunities(allOpportunities);
+    } catch (error) {
+      console.error('加载套利机会失败:', error);
+      showNotification('加载套利机会失败', 'error');
+    }
   };
 
-  const executeArbitrage = () => {
-    showNotification('套利交易执行成功', 'success');
-    loadData();
+  const executeArbitrage = async () => {
+    try {
+      await arbitrageAPI.execute();
+      showNotification('套利交易执行成功', 'success');
+      loadData();
+    } catch (error) {
+      console.error('执行套利交易失败:', error);
+      showNotification('执行套利交易失败', 'error');
+    }
   };
 
-  const toggleAutoTrading = () => {
-    setAutoTrading(!autoTrading);
-    showNotification(
-      autoTrading ? '自动交易已关闭' : '自动交易已开启',
-      'success'
-    );
+  const toggleAutoTrading = async () => {
+    try {
+      await arbitrageAPI.toggleAutoTrading(!autoTrading);
+      setAutoTrading(!autoTrading);
+      showNotification(
+        autoTrading ? '自动交易已关闭' : '自动交易已开启',
+        'success'
+      );
+    } catch (error) {
+      console.error('切换自动交易状态失败:', error);
+      showNotification('切换自动交易状态失败', 'error');
+    }
   };
 
   const renderOverview = () => (

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../hooks/useNotification';
-import { governanceStorage } from '../services/storage';
+import { governanceAPI } from '../services/apiService';
 import type { GovernanceProposal } from '../types';
 import './GovernorDashboard.css';
 
@@ -25,50 +25,56 @@ export function GovernorDashboard() {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const allProposals = governanceStorage.getAll();
-    setProposals(allProposals);
+  const loadData = async () => {
+    try {
+      const allProposals = await governanceAPI.getAll();
+      setProposals(allProposals);
+    } catch (error) {
+      console.error('加载提案失败:', error);
+      showNotification('加载提案失败', 'error');
+    }
   };
 
-  const createProposal = () => {
+  const createProposal = async () => {
     if (!newProposalTitle || !newProposalDesc) {
       showNotification('请填写完整的提案信息', 'error');
       return;
     }
 
-    const newProposal: GovernanceProposal = {
-      id: `proposal-${Date.now()}`,
-      title: newProposalTitle,
-      description: newProposalDesc,
-      proposer: user?.username || '',
-      status: 'pending',
-      votesFor: 0,
-      votesAgainst: 0,
-      totalVotes: 0,
-      startTime: new Date().toISOString(),
-      endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      quorum: 10000
-    };
+    try {
+      const newProposal: GovernanceProposal = {
+        id: `proposal-${Date.now()}`,
+        title: newProposalTitle,
+        description: newProposalDesc,
+        proposer: user?.username || '',
+        status: 'pending',
+        votesFor: 0,
+        votesAgainst: 0,
+        totalVotes: 0,
+        startTime: new Date().toISOString(),
+        endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        quorum: 10000
+      };
 
-    governanceStorage.save(newProposal);
-    showNotification('提案创建成功', 'success');
-    setNewProposalTitle('');
-    setNewProposalDesc('');
-    loadData();
+      await governanceAPI.create(newProposal);
+      showNotification('提案创建成功', 'success');
+      setNewProposalTitle('');
+      setNewProposalDesc('');
+      loadData();
+    } catch (error) {
+      console.error('创建提案失败:', error);
+      showNotification('创建提案失败', 'error');
+    }
   };
 
-  const vote = (proposalId: string, voteType: 'for' | 'against') => {
-    const proposal = governanceStorage.getById(proposalId);
-    if (proposal) {
-      if (voteType === 'for') {
-        proposal.votesFor++;
-      } else {
-        proposal.votesAgainst++;
-      }
-      proposal.totalVotes++;
-      governanceStorage.save(proposal);
+  const vote = async (proposalId: string, voteType: 'for' | 'against') => {
+    try {
+      await governanceAPI.vote(proposalId, voteType);
       showNotification(`投票${voteType === 'for' ? '支持' : '反对'}成功`, 'success');
       loadData();
+    } catch (error) {
+      console.error('投票失败:', error);
+      showNotification('投票失败', 'error');
     }
   };
 

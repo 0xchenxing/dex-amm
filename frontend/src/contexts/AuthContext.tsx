@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types';
-import { userStorage, initializeDemoData } from '../services/storage';
 import { authAPI, tokenStorage } from '../services/apiService';
 
 interface AuthContextType {
@@ -19,29 +18,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    initializeDemoData();
-    
     // Check if we have a token and try to get user info
     const checkAuth = async () => {
-      const token = tokenStorage.get();
-      if (token) {
-        try {
-          const fetchedUser = await authAPI.getCurrentUser(token);
-          setUser(fetchedUser);
-          userStorage.setCurrent(fetchedUser);
-        } catch {
-          // Token is invalid or expired
-          tokenStorage.remove();
-          userStorage.clearCurrent();
+      try {
+        const token = await tokenStorage.get();
+        if (token) {
+          try {
+            const fetchedUser = await authAPI.getCurrentUser(token);
+            setUser(fetchedUser);
+          } catch {
+            // Token is invalid or expired
+            await tokenStorage.remove();
+          }
         }
-      } else {
-        // Check for current user in session storage (backward compatibility)
-        const currentUser = userStorage.getCurrent();
-        if (currentUser) {
-          setUser(currentUser);
-        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     checkAuth();
@@ -53,16 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authAPI.login(username, password, role);
       
       // Store token
-      tokenStorage.set(response.token);
+      await tokenStorage.set(response.token);
       
       // Update user info
       const userWithLastLogin = {
         ...response.user,
         lastLogin: new Date().toISOString(),
       };
-      
-      // Store user in session storage for backward compatibility
-      userStorage.setCurrent(userWithLastLogin);
       
       // Update state
       setUser(userWithLastLogin);
@@ -74,10 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     // Clear token and user info
-    tokenStorage.remove();
-    userStorage.clearCurrent();
+    await tokenStorage.remove();
     setUser(null);
   };
 

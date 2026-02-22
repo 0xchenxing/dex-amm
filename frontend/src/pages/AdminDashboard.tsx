@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useNotification } from '../hooks/useNotification';
-import { userStorage, tradeStorage, systemLogStorage, liquidityPoolStorage } from '../services/storage';
-import type { SystemLog } from '../types';
+import { liquidityPoolAPI, tradingPairAPI, tradeAPI, systemLogAPI, userAPI } from '../services/apiService';
+import type { SystemLog, LiquidityPool, User } from '../types/index';
 import './AdminDashboard.css';
 
 const navItems: Array<{ key: string; label: string; icon: string }> = [
@@ -17,32 +17,204 @@ const navItems: Array<{ key: string; label: string; icon: string }> = [
 export function AdminDashboard() {
   const { showNotification, NotificationComponent } = useNotification();
   const [activeSection, setActiveSection] = useState('overview');
-  const [users, setUsers] = useState(userStorage.getAll());
+  const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<SystemLog[]>([]);
+  const [trades, setTrades] = useState<any[]>([]);
   const [searchUser, setSearchUser] = useState('');
+  const [pools, setPools] = useState<LiquidityPool[]>([]);
+  const [newPool, setNewPool] = useState({
+    token1: '',
+    token2: '',
+    apy: 0
+  });
+  const [isCreatingPool, setIsCreatingPool] = useState(false);
+  const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    loadData();
+    loadOverviewData();
   }, []);
 
-  const loadData = () => {
-    setUsers(userStorage.getAll());
-    setLogs(systemLogStorage.getAll().slice(0, 50));
+  const loadOverviewData = async () => {
+    if (loading.overview) return;
+    
+    setLoading(prev => ({ ...prev, overview: true }));
+    try {
+      const [poolsResult, logsResult, usersResult] = await Promise.allSettled([
+        liquidityPoolAPI.getAll(),
+        systemLogAPI.getAll(),
+        userAPI.getAll()
+      ]);
+
+      if (poolsResult.status === 'fulfilled') {
+        setPools(Array.isArray(poolsResult.value) ? poolsResult.value : []);
+      }
+
+      if (logsResult.status === 'fulfilled' && logsResult.value) {
+        setLogs(Array.isArray(logsResult.value) ? logsResult.value.slice(0, 50) : []);
+      }
+
+      if (usersResult.status === 'fulfilled') {
+        setUsers(Array.isArray(usersResult.value) ? usersResult.value : []);
+      }
+    } catch (error) {
+      console.error('加载概览数据失败:', error);
+      showNotification('加载概览数据失败', 'error');
+    } finally {
+      setLoading(prev => ({ ...prev, overview: false }));
+    }
   };
 
-  const toggleUserStatus = (userId: string) => {
-    const updatedUsers = users.map(u => 
-      u.id === userId ? { ...u, status: u.status === 'active' ? 'inactive' as const : 'active' as const } : u
-    );
-    setUsers(updatedUsers);
-    showNotification('用户状态已更新', 'success');
+  const loadUsersData = async () => {
+    if (loading.users) return;
+    
+    setLoading(prev => ({ ...prev, users: true }));
+    try {
+      const users = await userAPI.getAll();
+      setUsers(Array.isArray(users) ? users : []);
+    } catch (error) {
+      console.error('加载用户数据失败:', error);
+      showNotification('加载用户数据失败', 'error');
+    } finally {
+      setLoading(prev => ({ ...prev, users: false }));
+    }
+  };
+
+  const loadTradesData = async () => {
+    if (loading.trades) return;
+    
+    setLoading(prev => ({ ...prev, trades: true }));
+    try {
+      const trades = await tradeAPI.getAll();
+      setTrades(Array.isArray(trades) ? trades : []);
+    } catch (error) {
+      console.error('加载交易数据失败:', error);
+      showNotification('加载交易数据失败', 'error');
+    } finally {
+      setLoading(prev => ({ ...prev, trades: false }));
+    }
+  };
+
+  const loadLiquidityData = async () => {
+    if (loading.liquidity) return;
+    
+    setLoading(prev => ({ ...prev, liquidity: true }));
+    try {
+      const pools = await liquidityPoolAPI.getAll();
+      setPools(Array.isArray(pools) ? pools : []);
+    } catch (error) {
+      console.error('加载流动性数据失败:', error);
+      showNotification('加载流动性数据失败', 'error');
+    } finally {
+      setLoading(prev => ({ ...prev, liquidity: false }));
+    }
+  };
+
+  const loadSecurityData = async () => {
+    if (loading.security) return;
+    
+    setLoading(prev => ({ ...prev, security: true }));
+    try {
+      const logs = await systemLogAPI.getAll();
+      setLogs(Array.isArray(logs) ? logs : []);
+    } catch (error) {
+      console.error('加载安全数据失败:', error);
+      showNotification('加载安全数据失败', 'error');
+    } finally {
+      setLoading(prev => ({ ...prev, security: false }));
+    }
+  };
+
+  useEffect(() => {
+    switch (activeSection) {
+      case 'overview':
+        loadOverviewData();
+        break;
+      case 'users':
+        loadUsersData();
+        break;
+      case 'trades':
+        loadTradesData();
+        break;
+      case 'liquidity':
+        loadLiquidityData();
+        break;
+      case 'security':
+        loadSecurityData();
+        break;
+      default:
+        break;
+    }
+  }, [activeSection]);
+
+  const toggleUserStatus = async (userId: number) => {
+    try {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      const newStatus = user.status === 'active' ? 'inactive' : 'active';
+      await userAPI.updateStatus(userId, newStatus);
+      await loadUsersData();
+      showNotification('用户状态已更新', 'success');
+    } catch (error) {
+      console.error('更新用户状态失败:', error);
+      showNotification('更新用户状态失败，请稍后重试', 'error');
+    }
+  };
+
+  const createLiquidityPool = async () => {
+    if (!newPool.token1 || !newPool.token2 || newPool.token1 === newPool.token2) {
+      showNotification('请输入有效的代币对', 'error');
+      return;
+    }
+
+    setIsCreatingPool(true);
+    try {
+      const poolId = `${newPool.token1}-${newPool.token2}`;
+      const pool: LiquidityPool = {
+        id: poolId,
+        pair: `${newPool.token1}/${newPool.token2}`,
+        token1: newPool.token1,
+        token2: newPool.token2,
+        totalLiquidity: 0,
+        volume24h: 0,
+        apy: newPool.apy,
+        reserve1: 0,
+        reserve2: 0,
+        totalSupply: 0,
+        status: 'active'
+      };
+
+      await liquidityPoolAPI.create(pool);
+      await loadLiquidityData();
+      setNewPool({ token1: '', token2: '', apy: 0 });
+      showNotification('流动性池创建成功', 'success');
+    } catch (error) {
+      console.error('创建流动性池失败:', error);
+      showNotification('创建流动性池失败，请稍后重试', 'error');
+    } finally {
+      setIsCreatingPool(false);
+    }
+  };
+
+  const deleteLiquidityPool = async (poolId: string) => {
+    if (window.confirm('确定要删除这个流动性池吗？此操作不可撤销。')) {
+      try {
+        await liquidityPoolAPI.delete(poolId);
+        await tradingPairAPI.delete(poolId);
+        await loadLiquidityData();
+        showNotification('流动性池删除成功', 'success');
+      } catch (error) {
+        console.error('删除流动性池失败:', error);
+        showNotification('删除流动性池失败，请稍后重试', 'error');
+      }
+    }
   };
 
   const renderOverview = () => {
     const totalUsers = users.length;
     const activeUsers = users.filter(u => u.status === 'active').length;
-    const totalTrades = tradeStorage.getAll().length;
-    const totalPools = liquidityPoolStorage.getAll().length;
+    const totalTrades = trades.length;
+    const totalPools = pools.length;
 
     return (
       <>
@@ -131,7 +303,7 @@ export function AdminDashboard() {
                     </span>
                   </td>
                   <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td>{new Date(u.lastLogin).toLocaleString()}</td>
+                  <td>{u.lastLogin ? new Date(u.lastLogin).toLocaleString() : '从未登录'}</td>
                   <td>
                     <button
                       className="btn btn-primary"
@@ -150,7 +322,6 @@ export function AdminDashboard() {
   };
 
   const renderTrades = () => {
-    const trades = tradeStorage.getAll().slice(0, 50);
     return (
       <>
         <h2 className="section-title">交易监控</h2>
@@ -171,7 +342,7 @@ export function AdminDashboard() {
               {trades.map(trade => (
                 <tr key={trade.id}>
                   <td>{new Date(trade.timestamp).toLocaleString()}</td>
-                  <td>{trade.user}</td>
+                  <td>{trade.userUsername || trade.user}</td>
                   <td>{trade.pair}</td>
                   <td className={trade.type === 'buy' ? 'type-buy' : 'type-sell'}>
                     {trade.type === 'buy' ? '买入' : '卖出'}
@@ -191,10 +362,57 @@ export function AdminDashboard() {
   };
 
   const renderLiquidity = () => {
-    const pools = liquidityPoolStorage.getAll();
     return (
       <>
         <h2 className="section-title">流动性管理</h2>
+        
+        <div className="card">
+          <h3 className="card-title">创建流动性池</h3>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>代币1</label>
+              <input
+                type="text"
+                value={newPool.token1}
+                onChange={(e) => setNewPool({ ...newPool, token1: e.target.value.toUpperCase() })}
+                placeholder="例如: ETH"
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>代币2</label>
+              <input
+                type="text"
+                value={newPool.token2}
+                onChange={(e) => setNewPool({ ...newPool, token2: e.target.value.toUpperCase() })}
+                placeholder="例如: USDT"
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label>预期APY (%)</label>
+              <input
+                type="number"
+                value={newPool.apy}
+                onChange={(e) => setNewPool({ ...newPool, apy: parseFloat(e.target.value) || 0 })}
+                placeholder="例如: 15.2"
+                step="0.1"
+                className="form-input"
+              />
+            </div>
+            <div className="form-group full-width">
+              <button 
+                className="btn btn-primary" 
+                onClick={createLiquidityPool}
+                disabled={isCreatingPool}
+              >
+                {isCreatingPool ? '创建中...' : '创建流动性池'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <h3 className="section-subtitle">现有流动性池</h3>
         <div className="pools-grid">
           {pools.map(pool => (
             <div key={pool.id} className="pool-admin-card">
@@ -213,7 +431,15 @@ export function AdminDashboard() {
                   <span className="positive">{pool.apy}%</span>
                 </div>
               </div>
-              <button className="btn btn-primary">管理池子</button>
+              <div className="pool-admin-actions">
+                <button className="btn btn-primary">管理池子</button>
+                <button 
+                  className="btn btn-danger" 
+                  onClick={() => deleteLiquidityPool(pool.id)}
+                >
+                  删除池子
+                </button>
+              </div>
             </div>
           ))}
         </div>

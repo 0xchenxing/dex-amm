@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../hooks/useNotification';
-import { tradingPairStorage, tradeStorage, userStorage } from '../services/storage';
+import { tradingPairAPI, tradeAPI, userAPI } from '../services/apiService';
 import { connectToEthereum, getAccountAddress, executeUniswapTrade } from '../services/contractService';
 import type { Trade, TradingPair } from '../types';
 import './TraderDashboard.css';
@@ -56,14 +56,19 @@ export function TraderDashboard() {
     }
   };
 
-  const loadData = () => {
-    const pairs = tradingPairStorage.getAll();
-    setTradingPairs(pairs);
-    
-    if (user) {
-      const userTrades = tradeStorage.getByUser(user.username);
-      setTrades(userTrades);
-      setOrders(userTrades.filter(t => t.status === 'pending'));
+  const loadData = async () => {
+    try {
+      const pairs = await tradingPairAPI.getAll();
+      setTradingPairs(pairs);
+      
+      if (user) {
+        const userTrades = await tradeAPI.getByUser(user.id.toString());
+        setTrades(userTrades);
+        setOrders(userTrades.filter(t => t.status === 'pending'));
+      }
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      showNotification('加载数据失败', 'error');
     }
   };
 
@@ -118,21 +123,19 @@ export function TraderDashboard() {
         return;
       }
 
-      const updatedUser = { ...user };
       const [baseToken, quoteToken] = pair.split('-');
       const total = newTrade.total;
       const fee = newTrade.fee;
       
       if (type === 'buy') {
-        updatedUser.balance[baseToken] = (updatedUser.balance[baseToken] || 0) + parseFloat(amount);
-        updatedUser.balance[quoteToken] = (updatedUser.balance[quoteToken] || 0) - total - fee;
+        await userAPI.updateBalance(user.id, baseToken, (user.balance[baseToken] || 0) + parseFloat(amount));
+        await userAPI.updateBalance(user.id, quoteToken, (user.balance[quoteToken] || 0) - total - fee);
       } else {
-        updatedUser.balance[baseToken] = (updatedUser.balance[baseToken] || 0) - parseFloat(amount);
-        updatedUser.balance[quoteToken] = (updatedUser.balance[quoteToken] || 0) + total - fee;
+        await userAPI.updateBalance(user.id, baseToken, (user.balance[baseToken] || 0) - parseFloat(amount));
+        await userAPI.updateBalance(user.id, quoteToken, (user.balance[quoteToken] || 0) + total - fee);
       }
 
-      userStorage.update(updatedUser);
-      tradeStorage.add(newTrade);
+      await tradeAPI.create(newTrade);
       loadData();
 
       showNotification(`${type === 'buy' ? '买入' : '卖出'}成功`, 'success');
@@ -152,18 +155,19 @@ export function TraderDashboard() {
     }
   };
 
-  const cancelOrder = (orderId: string) => {
-    const order = tradeStorage.getById(orderId);
-    if (order) {
-      order.status = 'cancelled';
-      tradeStorage.update(order);
+  const cancelOrder = async (orderId: string) => {
+    try {
+      await tradeAPI.updateStatus(orderId, 'cancelled');
       showNotification('订单已取消', 'success');
       loadData();
+    } catch (error) {
+      console.error('取消订单失败:', error);
+      showNotification('取消订单失败', 'error');
     }
   };
 
   const calculateTotalBalance = () => {
-    if (!user) return 0;
+    if (!user || !user.balance) return 0;
     let total = 0;
     Object.entries(user.balance).forEach(([token, amount]) => {
       const pair = tradingPairs.find(p => 
@@ -204,7 +208,7 @@ export function TraderDashboard() {
         </div>
       </div>
       <div className="balance-grid">
-        {user && Object.entries(user.balance).map(([token, amount]) => (
+        {user && user.balance && Object.entries(user.balance).map(([token, amount]) => (
           <div key={token} className="balance-card">
             <div className="balance-token">{token}</div>
             <div className="balance-amount">{amount.toFixed(4)}</div>
@@ -398,7 +402,7 @@ export function TraderDashboard() {
         </div>
         <div className="stat-card">
           <div className="stat-icon">🪙</div>
-          <div className="stat-value">{user ? Object.keys(user.balance).length : 0}</div>
+          <div className="stat-value">{user && user.balance ? Object.keys(user.balance).length : 0}</div>
           <div className="stat-label">持有币种</div>
         </div>
         <div className="stat-card">
@@ -420,7 +424,7 @@ export function TraderDashboard() {
             </tr>
           </thead>
           <tbody>
-            {user && Object.entries(user.balance).map(([token, amount]) => {
+            {user && user.balance && Object.entries(user.balance).map(([token, amount]) => {
               const pair = tradingPairs.find(p => p.baseToken === token);
               const price = pair?.price || 1;
               const value = token === pair?.baseToken ? amount * price : amount;

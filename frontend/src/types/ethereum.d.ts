@@ -1,8 +1,8 @@
 interface Window {
   ethereum?: {
     request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-    on: (event: string, callback: (accounts: string[]) => void) => void;
-    removeListener: (event: string, callback: (accounts: string[]) => void) => void;
+    on: <E extends string>(event: E, callback: (data: any) => void) => void;
+    removeListener: <E extends string>(event: E, callback: (data: any) => void) => void;
   };
 }
 

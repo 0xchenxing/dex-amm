@@ -11,7 +11,7 @@ type User struct {
 	Password  string             `json:"password"`
 	Role      string             `json:"role"`
 	CreatedAt time.Time          `json:"created_at"`
-	LastLogin time.Time          `json:"last_login,omitempty"`
+	LastLogin *time.Time         `json:"last_login,omitempty"`
 	Email     string             `json:"email,omitempty"`
 	Balance   map[string]float64 `json:"balance,omitempty"`
 	Status    string             `json:"status,omitempty"`
@@ -103,4 +103,90 @@ var DemoUsers = []User{
 		CreatedAt: time.Now(),
 		Status:    "active",
 	},
+}
+
+// LiquidityPool represents a liquidity pool
+
+type LiquidityPool struct {
+	ID             string  `json:"id"`
+	Pair           string  `json:"pair"`
+	Token1         string  `json:"token1"`
+	Token2         string  `json:"token2"`
+	TotalLiquidity float64 `json:"totalLiquidity"`
+	Volume24h      float64 `json:"volume24h"`
+	APY            float64 `json:"apy"`
+	Reserve1       float64 `json:"reserve1"`
+	Reserve2       float64 `json:"reserve2"`
+	TotalSupply    float64 `json:"totalSupply"`
+	Status         string  `json:"status"`
+}
+
+// TradingPair represents a trading pair
+
+type TradingPair struct {
+	ID         string  `json:"id"`
+	BaseToken  string  `json:"baseToken"`
+	QuoteToken string  `json:"quoteToken"`
+	Price      float64 `json:"price"`
+	Volume24h  float64 `json:"volume24h"`
+	Change24h  float64 `json:"change24h"`
+	Liquidity  float64 `json:"liquidity"`
+	Fee        float64 `json:"fee"`
+}
+
+// Trade represents a trade
+
+type Trade struct {
+	ID           string    `json:"id"`
+	UserID       int       `json:"userId"`
+	UserUsername string    `json:"userUsername"`
+	Pair         string    `json:"pair"`
+	Type         string    `json:"type"`
+	Amount       float64   `json:"amount"`
+	Price        float64   `json:"price"`
+	Total        float64   `json:"total"`
+	Fee          float64   `json:"fee"`
+	Timestamp    time.Time `json:"timestamp"`
+	Status       string    `json:"status"`
+}
+
+// SystemLog represents a system log
+
+type SystemLog struct {
+	ID        string    `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Level     string    `json:"level"`
+	Message   string    `json:"message"`
+	Category  string    `json:"category"`
+}
+
+// GovernanceProposal represents a governance proposal
+
+type GovernanceProposal struct {
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Proposer    string    `json:"proposer"`
+	Status      string    `json:"status"`
+	VotesFor    float64   `json:"votesFor"`
+	VotesAgainst float64  `json:"votesAgainst"`
+	TotalVotes  float64   `json:"totalVotes"`
+	StartTime   time.Time `json:"startTime"`
+	EndTime     time.Time `json:"endTime"`
+	Quorum      float64   `json:"quorum"`
+}
+
+// ArbitrageOpportunity represents an arbitrage opportunity
+
+type ArbitrageOpportunity struct {
+	ID        string    `json:"id"`
+	Pair      string    `json:"pair"`
+	Exchange1 string    `json:"exchange1"`
+	Exchange2 string    `json:"exchange2"`
+	Price1    float64   `json:"price1"`
+	Price2    float64   `json:"price2"`
+	Spread    float64   `json:"spread"`
+	Profit    float64   `json:"profit"`
+	Volume    float64   `json:"volume"`
+	Timestamp time.Time `json:"timestamp"`
 }

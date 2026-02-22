@@ -29,7 +29,12 @@ type JWTConfig struct {
 
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
-	Type string
+	Type     string
+	Host     string
+	Port     int
+	User     string
+	Password string
+	DBName   string
 }
 
 // LoadConfig loads configuration from environment variables
@@ -49,7 +54,10 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// JWT configuration
-	jwtSecret := getEnv("JWT_SECRET", "default_secret_key")
+	jwtSecret := getEnv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		return nil, fmt.Errorf("JWT_SECRET is required")
+	}
 	jwtExpirationHoursStr := getEnv("JWT_EXPIRATION_HOURS", "24")
 	jwtExpirationHours, err := strconv.Atoi(jwtExpirationHoursStr)
 	if err != nil {
@@ -57,7 +65,28 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Database configuration
-	dbType := getEnv("DB_TYPE", "inmemory")
+	dbType := getEnv("DB_TYPE", "mysql")
+	dbHost := getEnv("DB_HOST", "")
+	if dbHost == "" {
+		return nil, fmt.Errorf("DB_HOST is required")
+	}
+	dbPortStr := getEnv("DB_PORT", "")
+	if dbPortStr == "" {
+		return nil, fmt.Errorf("DB_PORT is required")
+	}
+	dbPort, err := strconv.Atoi(dbPortStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_PORT: %v", err)
+	}
+	dbUser := getEnv("DB_USER", "")
+	if dbUser == "" {
+		return nil, fmt.Errorf("DB_USER is required")
+	}
+	dbPassword := getEnv("DB_PASSWORD", "")
+	dbName := getEnv("DB_NAME", "")
+	if dbName == "" {
+		return nil, fmt.Errorf("DB_NAME is required")
+	}
 
 	return &Config{
 		Server: ServerConfig{
@@ -69,7 +98,12 @@ func LoadConfig() (*Config, error) {
 			ExpirationHours: jwtExpirationHours,
 		},
 		Database: DatabaseConfig{
-			Type: dbType,
+			Type:     dbType,
+			Host:     dbHost,
+			Port:     dbPort,
+			User:     dbUser,
+			Password: dbPassword,
+			DBName:   dbName,
 		},
 	}, nil
 }

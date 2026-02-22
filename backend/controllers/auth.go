@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/dex-amm/backend/config"
 	"github.com/dex-amm/backend/middleware"
@@ -83,4 +84,73 @@ func (ac *AuthController) GetCurrentUser(c *gin.Context) {
 	userWithoutPassword.Password = ""
 
 	c.JSON(http.StatusOK, userWithoutPassword)
+}
+
+// GetAllUsers gets all users
+func (ac *AuthController) GetAllUsers(c *gin.Context) {
+	db := models.GetDB()
+	users, err := db.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		return
+	}
+
+	// Remove password fields from users
+	var usersWithoutPassword []models.User
+	for _, user := range users {
+		userWithoutPassword := user
+		userWithoutPassword.Password = ""
+		usersWithoutPassword = append(usersWithoutPassword, userWithoutPassword)
+	}
+
+	c.JSON(http.StatusOK, usersWithoutPassword)
+}
+
+// GetUserByID gets a user by ID
+func (ac *AuthController) GetUserByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	db := models.GetDB()
+	user, found := db.GetUserByID(id)
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Remove password field
+	userWithoutPassword := *user
+	userWithoutPassword.Password = ""
+
+	c.JSON(http.StatusOK, userWithoutPassword)
+}
+
+// UpdateUserStatus updates a user's status
+func (ac *AuthController) UpdateUserStatus(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var statusUpdate struct {
+		Status string `json:"status"`
+	}
+	if err := c.ShouldBindJSON(&statusUpdate); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status update"})
+		return
+	}
+
+	db := models.GetDB()
+	if err := db.UpdateUserStatus(id, statusUpdate.Status); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User status updated successfully"})
 }

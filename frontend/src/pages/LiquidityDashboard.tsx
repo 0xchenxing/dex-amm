@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../hooks/useNotification';
-import { liquidityPoolStorage, userStorage } from '../services/storage';
+import { liquidityPoolAPI, userAPI } from '../services/apiService';
+import { executeAddLiquidity, executeRemoveLiquidity } from '../services/contracts/router';
 import type { LiquidityPool } from '../types';
 import './LiquidityDashboard.css';
 
@@ -22,20 +23,26 @@ export function LiquidityDashboard() {
   const [addAmount1, setAddAmount1] = useState('');
   const [addAmount2, setAddAmount2] = useState('');
   const [removeAmount, setRemoveAmount] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const allPools = liquidityPoolStorage.getAll();
-    setPools(allPools);
-    if (allPools.length > 0 && !selectedPool) {
-      setSelectedPool(allPools[0].id);
+  const loadData = async () => {
+    try {
+      const allPools = await liquidityPoolAPI.getAll();
+      setPools(allPools);
+      if (allPools.length > 0 && !selectedPool) {
+        setSelectedPool(allPools[0].id);
+      }
+    } catch (error) {
+      console.error('加载流动性池失败:', error);
+      showNotification('加载流动性池失败', 'error');
     }
   };
 
-  const addLiquidity = () => {
+  const addLiquidity = async () => {
     if (!user || !selectedPool) return;
 
     const pool = pools.find(p => p.id === selectedPool);
@@ -54,19 +61,30 @@ export function LiquidityDashboard() {
       return;
     }
 
-    const updatedUser = { ...user };
-    updatedUser.balance[pool.token1] -= amount1;
-    updatedUser.balance[pool.token2] -= amount2;
-    userStorage.update(updatedUser);
-
-    showNotification('流动性添加成功', 'success');
-    setAddAmount1('');
-    setAddAmount2('');
-    loadData();
+    setIsLoading(true);
+    try {
+      const result = await executeAddLiquidity('dexamm', pool.token1, pool.token2, amount1, amount2);
+      await liquidityPoolAPI.addLiquidity(selectedPool, amount1, amount2, result.txHash);
+      await userAPI.updateBalance(user.id, pool.token1, user.balance[pool.token1] - amount1);
+      await userAPI.updateBalance(user.id, pool.token2, user.balance[pool.token2] - amount2);
+      showNotification(`流动性添加成功，交易哈希: ${result.txHash.substring(0, 10)}...`, 'success');
+      
+      setAddAmount1('');
+      setAddAmount2('');
+      loadData();
+    } catch (error) {
+      console.error('添加流动性失败:', error);
+      showNotification('添加流动性失败，请检查网络连接和钱包状态', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const removeLiquidity = () => {
+  const removeLiquidity = async () => {
     if (!user || !selectedPool) return;
+
+    const pool = pools.find(p => p.id === selectedPool);
+    if (!pool) return;
 
     const amount = parseFloat(removeAmount);
     if (!amount || amount <= 0) {
@@ -74,9 +92,19 @@ export function LiquidityDashboard() {
       return;
     }
 
-    showNotification('流动性移除成功', 'success');
-    setRemoveAmount('');
-    loadData();
+    setIsLoading(true);
+    try {
+      const result = await executeRemoveLiquidity('dexamm', pool.token1, pool.token2, amount);
+      await liquidityPoolAPI.removeLiquidity(selectedPool, amount, result.txHash);
+      showNotification(`流动性移除成功，交易哈希: ${result.txHash.substring(0, 10)}...`, 'success');
+      setRemoveAmount('');
+      loadData();
+    } catch (error) {
+      console.error('移除流动性失败:', error);
+      showNotification('移除流动性失败，请检查网络连接和钱包状态', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const calculateTotalEarnings = () => 1250.50;
@@ -187,8 +215,8 @@ export function LiquidityDashboard() {
                     step="0.01"
                   />
                 </div>
-                <button className="btn btn-primary" onClick={addLiquidity}>
-                  添加流动性
+                <button className="btn btn-primary" onClick={addLiquidity} disabled={isLoading}>
+                  {isLoading ? '添加中...' : '添加流动性'}
                 </button>
               </>
             );
@@ -215,8 +243,8 @@ export function LiquidityDashboard() {
               step="0.01"
             />
           </div>
-          <button className="btn btn-danger" onClick={removeLiquidity}>
-            移除流动性
+          <button className="btn btn-danger" onClick={removeLiquidity} disabled={isLoading}>
+            {isLoading ? '移除中...' : '移除流动性'}
           </button>
         </div>
       </div>
