@@ -81,18 +81,14 @@ func createTables(db *sql.DB) error {
 	// Create trading_pairs table
 	tradingPairsTable := `
 	CREATE TABLE IF NOT EXISTS trading_pairs (
-		id VARCHAR(50) PRIMARY KEY,
-		base_token VARCHAR(20) NOT NULL,
-		quote_token VARCHAR(20) NOT NULL,
-		price DECIMAL(30, 18) NOT NULL,
-		volume24h DECIMAL(30, 2) NOT NULL,
-		change24h DECIMAL(10, 2) NOT NULL,
-		liquidity DECIMAL(30, 2) NOT NULL,
-		fee DECIMAL(10, 6) NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+		id VARCHAR(100) PRIMARY KEY,
+		base_token VARCHAR(50) NOT NULL,
+		quote_token VARCHAR(50) NOT NULL,
+		base_token_address VARCHAR(255) NOT NULL,
+		quote_token_address VARCHAR(255) NOT NULL
 	);
 	`
+
 	_, err = db.Exec(tradingPairsTable)
 	if err != nil {
 		return fmt.Errorf("error creating trading_pairs table: %v", err)
@@ -127,7 +123,7 @@ func createTables(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("error dropping trades table: %v", err)
 	}
-	
+
 	tradesTable := `
 	CREATE TABLE trades (
 		id VARCHAR(50) PRIMARY KEY,
@@ -273,7 +269,7 @@ func initializeDemoData(db *sql.DB) error {
 		if err != nil {
 			return fmt.Errorf("error inserting demo user %s: %v", user.Username, err)
 		}
-		
+
 		// Get the inserted user ID
 		userID, err := result.LastInsertId()
 		if err != nil {
@@ -321,24 +317,21 @@ func initializeDemoData(db *sql.DB) error {
 
 	// Insert demo trading pairs
 	tradingPairs := []struct {
-		id         string
-		baseToken  string
-		quoteToken string
-		price      float64
-		volume24h  float64
-		change24h  float64
-		liquidity  float64
-		fee        float64
+		id                string
+		baseToken         string
+		quoteToken        string
+		baseTokenAddress  string
+		quoteTokenAddress string
 	}{
-		{"ETH-USDT", "ETH", "USDT", 2450.50, 1250000, 2.5, 5000000, 0.003},
-		{"WBTC-USDT", "WBTC", "USDT", 43250.00, 850000, -1.2, 3200000, 0.003},
-		{"DAI-USDT", "DAI", "USDT", 1.001, 450000, 0.1, 2800000, 0.001},
+		{"ETH-USDT", "ETH", "USDT", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
+		{"WBTC-USDT", "WBTC", "USDT", "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
+		{"DAI-USDT", "DAI", "USDT", "0x6B175474E89094C44Da98b954EedeAC495271d0F", "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
 	}
 
 	for _, pair := range tradingPairs {
 		_, err := db.Exec(
-			"INSERT INTO trading_pairs (id, base_token, quote_token, price, volume24h, change24h, liquidity, fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			pair.id, pair.baseToken, pair.quoteToken, pair.price, pair.volume24h, pair.change24h, pair.liquidity, pair.fee,
+			"INSERT INTO trading_pairs (id, base_token, quote_token, base_token_address, quote_token_address) VALUES (?, ?, ?, ?, ?)",
+			pair.id, pair.baseToken, pair.quoteToken, pair.baseTokenAddress, pair.quoteTokenAddress,
 		)
 		if err != nil {
 			return fmt.Errorf("error inserting demo trading pair %s: %v", pair.id, err)
@@ -375,19 +368,19 @@ func initializeDemoData(db *sql.DB) error {
 
 	// Insert demo trades
 	trades := []struct {
-		id           string
-		username     string
-		pair         string
-		tradeType    string
-		amount       float64
-		price        float64
-		total        float64
-		fee          float64
-		timestamp    time.Time
-		status       string
+		id        string
+		username  string
+		pair      string
+		tradeType string
+		amount    float64
+		price     float64
+		total     float64
+		fee       float64
+		timestamp time.Time
+		status    string
 	}{
 		{"trade1", "trader", "ETH-USDT", "buy", 2.5, 2445.30, 6113.25, 18.34, time.Now().Add(-time.Hour), "completed"},
-		{"trade2", "trader", "WBTC-USDT", "sell", 0.1, 43180.00, 4318.00, 12.95, time.Now().Add(-2*time.Hour), "completed"},
+		{"trade2", "trader", "WBTC-USDT", "sell", 0.1, 43180.00, 4318.00, 12.95, time.Now().Add(-2 * time.Hour), "completed"},
 	}
 
 	for _, trade := range trades {
@@ -403,20 +396,20 @@ func initializeDemoData(db *sql.DB) error {
 
 	// Insert demo governance proposals
 	governanceProposals := []struct {
-		id          string
-		title       string
-		description string
-		proposer    string
-		status      string
-		votesFor    float64
+		id           string
+		title        string
+		description  string
+		proposer     string
+		status       string
+		votesFor     float64
 		votesAgainst float64
-		totalVotes  float64
-		startTime   time.Time
-		endTime     time.Time
-		quorum      float64
+		totalVotes   float64
+		startTime    time.Time
+		endTime      time.Time
+		quorum       float64
 	}{
-		{"proposal1", "调整交易手续费率", "将ETH-USDT交易对手续费从0.3%调整为0.25%", "governor", "active", 15000, 3000, 18000, time.Now().Add(-24*time.Hour), time.Now().Add(6*24*time.Hour), 10000},
-		{"proposal2", "新增LINK-USDT交易对", "在平台上添加LINK-USDT交易对以增加交易选择", "governor", "pending", 8500, 1200, 9700, time.Now().Add(24*time.Hour), time.Now().Add(7*24*time.Hour), 10000},
+		{"proposal1", "调整交易手续费率", "将ETH-USDT交易对手续费从0.3%调整为0.25%", "governor", "active", 15000, 3000, 18000, time.Now().Add(-24 * time.Hour), time.Now().Add(6 * 24 * time.Hour), 10000},
+		{"proposal2", "新增LINK-USDT交易对", "在平台上添加LINK-USDT交易对以增加交易选择", "governor", "pending", 8500, 1200, 9700, time.Now().Add(24 * time.Hour), time.Now().Add(7 * 24 * time.Hour), 10000},
 	}
 
 	for _, proposal := range governanceProposals {
@@ -431,16 +424,16 @@ func initializeDemoData(db *sql.DB) error {
 
 	// Insert demo arbitrage opportunities
 	arbitrageOpportunities := []struct {
-		id         string
-		pair       string
-		exchange1  string
-		exchange2  string
-		price1     float64
-		price2     float64
-		spread     float64
-		profit     float64
-		volume     float64
-		timestamp  time.Time
+		id        string
+		pair      string
+		exchange1 string
+		exchange2 string
+		price1    float64
+		price2    float64
+		spread    float64
+		profit    float64
+		volume    float64
+		timestamp time.Time
 	}{
 		{"arb1", "ETH-USDT", "DEX-AMM", "Uniswap", 2450.50, 2465.80, 0.62, 153.06, 10.0, time.Now()},
 		{"arb2", "WBTC-USDT", "DEX-AMM", "SushiSwap", 43250.00, 43180.00, -0.16, -35.00, 0.5, time.Now()},
@@ -465,8 +458,8 @@ func initializeDemoData(db *sql.DB) error {
 		category  string
 	}{
 		{"log1", time.Now(), "info", "用户 trader 执行交易：买入 2.5 ETH", "trade"},
-		{"log2", time.Now().Add(-5*time.Minute), "info", "流动性池 ETH-USDT 添加流动性 1000 USDT", "liquidity"},
-		{"log3", time.Now().Add(-10*time.Minute), "warning", "检测到异常交易模式，已触发风控机制", "security"},
+		{"log2", time.Now().Add(-5 * time.Minute), "info", "流动性池 ETH-USDT 添加流动性 1000 USDT", "liquidity"},
+		{"log3", time.Now().Add(-10 * time.Minute), "warning", "检测到异常交易模式，已触发风控机制", "security"},
 	}
 
 	for _, log := range systemLogs {
@@ -624,7 +617,7 @@ func (db *DB) DeleteLiquidityPool(id string) error {
 // GetAllTradingPairs gets all trading pairs
 func (db *DB) GetAllTradingPairs() ([]TradingPair, error) {
 	rows, err := db.db.Query(`
-		SELECT id, base_token, quote_token, price, volume24h, change24h, liquidity, fee
+		SELECT id, base_token, quote_token, base_token_address, quote_token_address
 		FROM trading_pairs
 	`)
 	if err != nil {
@@ -636,7 +629,7 @@ func (db *DB) GetAllTradingPairs() ([]TradingPair, error) {
 	for rows.Next() {
 		var pair TradingPair
 		if err := rows.Scan(
-			&pair.ID, &pair.BaseToken, &pair.QuoteToken, &pair.Price, &pair.Volume24h, &pair.Change24h, &pair.Liquidity, &pair.Fee,
+			&pair.ID, &pair.BaseToken, &pair.QuoteToken, &pair.BaseTokenAddr, &pair.QuoteTokenAddr,
 		); err != nil {
 			continue
 		}
@@ -650,11 +643,11 @@ func (db *DB) GetAllTradingPairs() ([]TradingPair, error) {
 func (db *DB) GetTradingPairByID(id string) (*TradingPair, error) {
 	var pair TradingPair
 	err := db.db.QueryRow(`
-		SELECT id, base_token, quote_token, price, volume24h, change24h, liquidity, fee
+		SELECT id, base_token, quote_token, base_token_address, quote_token_address
 		FROM trading_pairs
 		WHERE id = ?
 	`, id).Scan(
-		&pair.ID, &pair.BaseToken, &pair.QuoteToken, &pair.Price, &pair.Volume24h, &pair.Change24h, &pair.Liquidity, &pair.Fee,
+		&pair.ID, &pair.BaseToken, &pair.QuoteToken, &pair.BaseTokenAddr, &pair.QuoteTokenAddr,
 	)
 	if err != nil {
 		return nil, err
@@ -665,20 +658,35 @@ func (db *DB) GetTradingPairByID(id string) (*TradingPair, error) {
 
 // CreateTradingPair creates a new trading pair
 func (db *DB) CreateTradingPair(pair TradingPair) error {
-	_, err := db.db.Exec(`
-		INSERT INTO trading_pairs (id, base_token, quote_token, price, volume24h, change24h, liquidity, fee)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, pair.ID, pair.BaseToken, pair.QuoteToken, pair.Price, pair.Volume24h, pair.Change24h, pair.Liquidity, pair.Fee)
-	return err
+	fmt.Printf("Creating trading pair: %+v\n", pair)
+
+	result, err := db.db.Exec(`
+		INSERT INTO trading_pairs (id, base_token, quote_token, base_token_address, quote_token_address)
+		VALUES (?, ?, ?, ?, ?)
+	`, pair.ID, pair.BaseToken, pair.QuoteToken, pair.BaseTokenAddr, pair.QuoteTokenAddr)
+	if err != nil {
+		fmt.Printf("Error executing SQL: %v\n", err)
+		return fmt.Errorf("failed to insert trading pair: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("no rows were inserted, possibly duplicate ID: %s", pair.ID)
+	}
+
+	return nil
 }
 
 // UpdateTradingPair updates a trading pair
 func (db *DB) UpdateTradingPair(pair TradingPair) error {
 	_, err := db.db.Exec(`
 		UPDATE trading_pairs
-		SET base_token = ?, quote_token = ?, price = ?, volume24h = ?, change24h = ?, liquidity = ?, fee = ?
+		SET base_token = ?, quote_token = ?, base_token_address = ?, quote_token_address = ?
 		WHERE id = ?
-	`, pair.BaseToken, pair.QuoteToken, pair.Price, pair.Volume24h, pair.Change24h, pair.Liquidity, pair.Fee, pair.ID)
+	`, pair.BaseToken, pair.QuoteToken, pair.BaseTokenAddr, pair.QuoteTokenAddr, pair.ID)
 	return err
 }
 

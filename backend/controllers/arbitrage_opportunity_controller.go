@@ -25,7 +25,7 @@ func NewArbitrageOpportunityController(cfg *config.Config, db *models.DB) *Arbit
 // GetAllArbitrageOpportunities gets all arbitrage opportunities
 func (aoc *ArbitrageOpportunityController) GetAllArbitrageOpportunities(c *gin.Context) {
 	// Implementation to get all arbitrage opportunities
-	c.JSON(http.StatusOK, gin.H{"message": "Get all arbitrage opportunities"})
+	c.JSON(http.StatusOK, []interface{}{})
 }
 
 // GetArbitrageOpportunityByID gets an arbitrage opportunity by ID
@@ -44,4 +44,16 @@ func (aoc *ArbitrageOpportunityController) CreateArbitrageOpportunity(c *gin.Con
 func (aoc *ArbitrageOpportunityController) DeleteArbitrageOpportunity(c *gin.Context) {
 	// Implementation to delete arbitrage opportunity
 	c.JSON(http.StatusOK, gin.H{"message": "Delete arbitrage opportunity"})
+}
+
+// ExecuteArbitrage executes an arbitrage trade
+func (aoc *ArbitrageOpportunityController) ExecuteArbitrage(c *gin.Context) {
+	// Implementation to execute arbitrage
+	c.JSON(http.StatusOK, gin.H{"message": "Execute arbitrage"})
+}
+
+// ToggleAutoTrading toggles auto trading status
+func (aoc *ArbitrageOpportunityController) ToggleAutoTrading(c *gin.Context) {
+	// Implementation to toggle auto trading
+	c.JSON(http.StatusOK, gin.H{})
 }

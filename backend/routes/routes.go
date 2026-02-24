@@ -28,6 +28,8 @@ func SetupRoutes(router *gin.Engine) error {
 	liquidityPoolController := controllers.NewLiquidityPoolController(cfg, db)
 	tradeController := controllers.NewTradeController(cfg, db)
 	systemLogController := controllers.NewSystemLogController(cfg, db)
+	governanceProposalController := controllers.NewGovernanceProposalController(cfg, db)
+	arbitrageOpportunityController := controllers.NewArbitrageOpportunityController(cfg, db)
 
 	// API routes
 	api := router.Group("/api")
@@ -82,6 +84,25 @@ func SetupRoutes(router *gin.Engine) error {
 			systemLogs.GET("", systemLogController.GetAllSystemLogs)
 			systemLogs.GET("/category/:category", systemLogController.GetSystemLogsByCategory)
 			systemLogs.POST("", middleware.JWTAuthMiddleware(), systemLogController.CreateSystemLog)
+		}
+
+		// Governance routes
+		governance := api.Group("/governance")
+		{
+			proposals := governance.Group("/proposals")
+			{
+				proposals.GET("", governanceProposalController.GetAllGovernanceProposals)
+				proposals.POST("", middleware.JWTAuthMiddleware(), governanceProposalController.CreateGovernanceProposal)
+				proposals.POST("/:id/vote", middleware.JWTAuthMiddleware(), governanceProposalController.VoteOnGovernanceProposal)
+			}
+		}
+
+		// Arbitrage routes
+		arbitrage := api.Group("/arbitrage")
+		{
+			arbitrage.GET("/opportunities", arbitrageOpportunityController.GetAllArbitrageOpportunities)
+			arbitrage.POST("/execute", arbitrageOpportunityController.ExecuteArbitrage)
+			arbitrage.PATCH("/auto-trading", arbitrageOpportunityController.ToggleAutoTrading)
 		}
 	}
 

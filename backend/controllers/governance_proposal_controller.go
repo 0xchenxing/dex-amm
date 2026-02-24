@@ -25,7 +25,7 @@ func NewGovernanceProposalController(cfg *config.Config, db *models.DB) *Governa
 // GetAllGovernanceProposals gets all governance proposals
 func (gpc *GovernanceProposalController) GetAllGovernanceProposals(c *gin.Context) {
 	// Implementation to get all governance proposals
-	c.JSON(http.StatusOK, gin.H{"message": "Get all governance proposals"})
+	c.JSON(http.StatusOK, []map[string]interface{}{})
 }
 
 // GetGovernanceProposalByID gets a governance proposal by ID
@@ -50,4 +50,10 @@ func (gpc *GovernanceProposalController) UpdateGovernanceProposal(c *gin.Context
 func (gpc *GovernanceProposalController) DeleteGovernanceProposal(c *gin.Context) {
 	// Implementation to delete governance proposal
 	c.JSON(http.StatusOK, gin.H{"message": "Delete governance proposal"})
+}
+
+// VoteOnGovernanceProposal votes on a governance proposal
+func (gpc *GovernanceProposalController) VoteOnGovernanceProposal(c *gin.Context) {
+	// Implementation to vote on governance proposal
+	c.JSON(http.StatusOK, gin.H{"message": "Vote on governance proposal"})
 }

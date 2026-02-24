@@ -39,6 +39,12 @@ func (ac *AuthController) Login(c *gin.Context) {
 		return
 	}
 
+	// Check if user is active
+	if user.Status != "active" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Account is inactive"})
+		return
+	}
+
 	// Update last login time
 	db.UpdateLastLogin(user.ID)
 
@@ -76,6 +82,12 @@ func (ac *AuthController) GetCurrentUser(c *gin.Context) {
 	user, found := db.GetUserByID(userID)
 	if !found {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Check if user is active
+	if user.Status != "active" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Account is inactive"})
 		return
 	}
 

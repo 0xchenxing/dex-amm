@@ -21,9 +21,9 @@ export function Login() {
       return;
     }
 
-    const success = await login(username, password, role);
+    const result = await login(username, password, role);
 
-    if (success) {
+    if (result.success) {
       showNotification('登录成功，正在跳转...', 'success');
       setTimeout(() => {
         switch (role) {
@@ -47,7 +47,7 @@ export function Login() {
         }
       }, 1500);
     } else {
-      showNotification('用户名、密码或角色不匹配', 'error');
+      showNotification(result.error || '登录失败，请重试', 'error');
     }
   };
 

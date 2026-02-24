@@ -10,8 +10,8 @@ type User struct {
 	Username  string             `json:"username"`
 	Password  string             `json:"password"`
 	Role      string             `json:"role"`
-	CreatedAt time.Time          `json:"created_at"`
-	LastLogin *time.Time         `json:"last_login,omitempty"`
+	CreatedAt time.Time          `json:"createdAt"`
+	LastLogin *time.Time         `json:"lastLogin,omitempty"`
 	Email     string             `json:"email,omitempty"`
 	Balance   map[string]float64 `json:"balance,omitempty"`
 	Status    string             `json:"status,omitempty"`
@@ -124,14 +124,11 @@ type LiquidityPool struct {
 // TradingPair represents a trading pair
 
 type TradingPair struct {
-	ID         string  `json:"id"`
-	BaseToken  string  `json:"baseToken"`
-	QuoteToken string  `json:"quoteToken"`
-	Price      float64 `json:"price"`
-	Volume24h  float64 `json:"volume24h"`
-	Change24h  float64 `json:"change24h"`
-	Liquidity  float64 `json:"liquidity"`
-	Fee        float64 `json:"fee"`
+	ID             string `json:"id"`
+	BaseToken      string `json:"baseToken"`
+	QuoteToken     string `json:"quoteToken"`
+	BaseTokenAddr  string `json:"baseTokenAddr"`
+	QuoteTokenAddr string `json:"quoteTokenAddr"`
 }
 
 // Trade represents a trade
@@ -163,17 +160,17 @@ type SystemLog struct {
 // GovernanceProposal represents a governance proposal
 
 type GovernanceProposal struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Proposer    string    `json:"proposer"`
-	Status      string    `json:"status"`
-	VotesFor    float64   `json:"votesFor"`
-	VotesAgainst float64  `json:"votesAgainst"`
-	TotalVotes  float64   `json:"totalVotes"`
-	StartTime   time.Time `json:"startTime"`
-	EndTime     time.Time `json:"endTime"`
-	Quorum      float64   `json:"quorum"`
+	ID           string    `json:"id"`
+	Title        string    `json:"title"`
+	Description  string    `json:"description"`
+	Proposer     string    `json:"proposer"`
+	Status       string    `json:"status"`
+	VotesFor     float64   `json:"votesFor"`
+	VotesAgainst float64   `json:"votesAgainst"`
+	TotalVotes   float64   `json:"totalVotes"`
+	StartTime    time.Time `json:"startTime"`
+	EndTime      time.Time `json:"endTime"`
+	Quorum       float64   `json:"quorum"`
 }
 
 // ArbitrageOpportunity represents an arbitrage opportunity

@@ -19,11 +19,8 @@ export interface TradingPair {
   id: string;
   baseToken: string;
   quoteToken: string;
-  price: number;
-  volume24h: number;
-  change24h: number;
-  liquidity: number;
-  fee: number;
+  baseTokenAddr: string;
+  quoteTokenAddr: string;
 }
 
 // 交易记录

@@ -28,7 +28,7 @@ export function GovernorDashboard() {
   const loadData = async () => {
     try {
       const allProposals = await governanceAPI.getAll();
-      setProposals(allProposals);
+      setProposals(Array.isArray(allProposals) ? allProposals : []);
     } catch (error) {
       console.error('加载提案失败:', error);
       showNotification('加载提案失败', 'error');

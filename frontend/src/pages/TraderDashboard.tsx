@@ -63,8 +63,8 @@ export function TraderDashboard() {
       
       if (user) {
         const userTrades = await tradeAPI.getByUser(user.id.toString());
-        setTrades(userTrades);
-        setOrders(userTrades.filter(t => t.status === 'pending'));
+        setTrades(userTrades || []);
+        setOrders((userTrades || []).filter(t => t.status === 'pending'));
       }
     } catch (error) {
       console.error('加载数据失败:', error);
@@ -74,7 +74,7 @@ export function TraderDashboard() {
 
   const getCurrentPrice = (pairId: string) => {
     const pair = tradingPairs.find(p => p.id === pairId);
-    return pair?.price || 0;
+    return 0;
   };
 
   const calculateTotal = (amount: string, price: string, pairPrice: number) => {
@@ -96,19 +96,18 @@ export function TraderDashboard() {
       const pair = type === 'buy' ? buyPair : sellPair;
       const amount = type === 'buy' ? buyAmount : sellAmount;
       const price = type === 'buy' ? buyPrice : sellPrice;
-      const pairData = tradingPairs.find(p => p.id === pair);
 
       if (!amount || parseFloat(amount) <= 0) {
         showNotification('请输入有效的交易数量', 'error');
         return;
       }
 
-      if (!pairData) {
-        showNotification('交易对不存在', 'error');
+      if (!price || parseFloat(price) <= 0) {
+        showNotification('请输入有效的交易价格', 'error');
         return;
       }
 
-      const tradePrice = price ? parseFloat(price) : pairData.price;
+      const tradePrice = parseFloat(price);
 
       const newTrade = await executeUniswapTrade(
         pair,
@@ -170,12 +169,7 @@ export function TraderDashboard() {
     if (!user || !user.balance) return 0;
     let total = 0;
     Object.entries(user.balance).forEach(([token, amount]) => {
-      const pair = tradingPairs.find(p => 
-        p.baseToken === token || p.quoteToken === token
-      );
-      if (pair && token === pair.baseToken) {
-        total += amount * pair.price;
-      } else if (token === 'USDT' || token === 'DAI') {
+      if (token === 'USDT' || token === 'DAI') {
         total += amount;
       }
     });
@@ -198,7 +192,7 @@ export function TraderDashboard() {
         </div>
         <div className="stat-card">
           <div className="stat-icon">📊</div>
-          <div className="stat-value">{trades.length}</div>
+          <div className="stat-value">{trades?.length || 0}</div>
           <div className="stat-label">总交易次数</div>
         </div>
         <div className="stat-card">
@@ -226,8 +220,7 @@ export function TraderDashboard() {
           <div className="trading-header">
             <h3>买入</h3>
             <div className="price-display">
-              <div className="current-price">${getCurrentPrice(buyPair).toFixed(2)}</div>
-              <div className="price-change positive">+2.5% (24h)</div>
+              <div className="current-price">市价交易</div>
             </div>
           </div>
           <div className="form-group">
@@ -256,7 +249,7 @@ export function TraderDashboard() {
               type="number"
               value={buyPrice}
               onChange={(e) => setBuyPrice(e.target.value)}
-              placeholder="市价"
+              placeholder="输入价格"
               step="0.01"
             />
           </div>
@@ -264,7 +257,7 @@ export function TraderDashboard() {
             <label>总计 (USDT)</label>
             <input
               type="number"
-              value={calculateTotal(buyAmount, buyPrice, getCurrentPrice(buyPair))}
+              value={calculateTotal(buyAmount, buyPrice, 0)}
               readOnly
               placeholder="自动计算"
             />
@@ -281,8 +274,7 @@ export function TraderDashboard() {
           <div className="trading-header">
             <h3>卖出</h3>
             <div className="price-display">
-              <div className="current-price">${getCurrentPrice(sellPair).toFixed(2)}</div>
-              <div className="price-change positive">+2.5% (24h)</div>
+              <div className="current-price">市价交易</div>
             </div>
           </div>
           <div className="form-group">
@@ -311,7 +303,7 @@ export function TraderDashboard() {
               type="number"
               value={sellPrice}
               onChange={(e) => setSellPrice(e.target.value)}
-              placeholder="市价"
+              placeholder="输入价格"
               step="0.01"
             />
           </div>
@@ -319,7 +311,7 @@ export function TraderDashboard() {
             <label>总计 (USDT)</label>
             <input
               type="number"
-              value={calculateTotal(sellAmount, sellPrice, getCurrentPrice(sellPair))}
+              value={calculateTotal(sellAmount, sellPrice, 0)}
               readOnly
               placeholder="自动计算"
             />
@@ -417,7 +409,6 @@ export function TraderDashboard() {
             <tr>
               <th>代币</th>
               <th>余额</th>
-              <th>价格</th>
               <th>价值 (USDT)</th>
               <th>24h变化</th>
               <th>占比</th>
@@ -425,9 +416,7 @@ export function TraderDashboard() {
           </thead>
           <tbody>
             {user && user.balance && Object.entries(user.balance).map(([token, amount]) => {
-              const pair = tradingPairs.find(p => p.baseToken === token);
-              const price = pair?.price || 1;
-              const value = token === pair?.baseToken ? amount * price : amount;
+              const value = token === 'USDT' || token === 'DAI' ? amount : 0;
               const total = calculateTotalBalance();
               const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0';
               
@@ -435,7 +424,6 @@ export function TraderDashboard() {
                 <tr key={token}>
                   <td><strong>{token}</strong></td>
                   <td>{amount.toFixed(4)}</td>
-                  <td>${price.toFixed(2)}</td>
                   <td>${value.toFixed(2)}</td>
                   <td className="positive">+2.5%</td>
                   <td>{percentage}%</td>

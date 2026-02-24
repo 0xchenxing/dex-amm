@@ -5,7 +5,7 @@ import { authAPI, tokenStorage } from '../services/apiService';
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string, role: string) => Promise<boolean>;
+  login: (username: string, password: string, role: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string, role: string): Promise<boolean> => {
+  const login = async (username: string, password: string, role: string): Promise<{ success: boolean; error?: string }> => {
     try {
       // Call backend API for login
       const response = await authAPI.login(username, password, role);
@@ -58,10 +58,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update state
       setUser(userWithLastLogin);
       
-      return true;
+      return { success: true };
     } catch (error) {
       console.error('Login failed:', error);
-      return false;
+      
+      // Extract error message from the error object
+      let errorMessage = '登录失败，请检查用户名、密码或角色';
+      if (error instanceof Error) {
+        try {
+          const errorData = JSON.parse(error.message);
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch {
+          // If error message is not JSON, use it directly
+          errorMessage = error.message;
+        }
+      }
+      
+      return { success: false, error: errorMessage };
     }
   };
 
