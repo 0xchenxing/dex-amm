@@ -2,13 +2,13 @@
 // 此文件保留以确保向后兼容
 import * as contractService from './contracts/base';
 import * as erc20Service from './contracts/erc20';
-import * as routerService from './contracts/router';
-import * as factoryService from './contracts/factory';
+import * as routerService from './contracts/SwapRouter02';
+import * as factoryService from './contracts/SwapFactory';
 
 export * from './contracts/base';
 export * from './contracts/erc20';
-export * from './contracts/router';
-export * from './contracts/factory';
+export * from './contracts/SwapRouter02';
+export * from './contracts/SwapFactory';
 
 export default {
   ...contractService,
@@ -16,4 +16,3 @@ export default {
   ...routerService,
   ...factoryService
 };
-

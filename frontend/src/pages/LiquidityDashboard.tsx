@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../hooks/useNotification';
 import { liquidityPoolAPI, userAPI } from '../services/apiService';
-import { executeAddLiquidity, executeRemoveLiquidity } from '../services/contracts/router';
+import { executeAddLiquidity, executeRemoveLiquidity } from '../services/contracts/SwapRouter02';
 import type { LiquidityPool } from '../types';
 import './LiquidityDashboard.css';
 
