@@ -8,19 +8,9 @@ export interface User {
   password: string;
   role: UserRole;
   email: string;
-  balance: Record<string, number>;
   createdAt: string;
   lastLogin: string;
   status?: 'active' | 'inactive';
-}
-
-// 交易对数据
-export interface TradingPair {
-  id: string;
-  baseToken: string;
-  quoteToken: string;
-  baseTokenAddr: string;
-  quoteTokenAddr: string;
 }
 
 // 交易记录
@@ -43,6 +33,8 @@ export interface LiquidityPool {
   pair: string;
   token1: string;
   token2: string;
+  token1Address: string;
+  token2Address: string;
   totalLiquidity: number;
   volume24h: number;
   apy: number;

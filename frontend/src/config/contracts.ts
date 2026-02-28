@@ -21,10 +21,10 @@ export const CONTRACT_ADDRESSES = {
   
   // Sepolia 网络 ERC20 代币合约
   TOKENS: {
-    ETH: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-    USDT: '0x2Bd4D30d4E026146039600aF11e83e4f8277BbDD',
-    WBTC: '0x9B2283478B422B7040e90A50c427109763e126A3',
-    DAI: '0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844'
+    ETH: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', // Sepolia WETH
+    USDT: '0x7b7087A1B1a7950D163401F4D2D13898a9f99711', // Sepolia USDT
+    WBTC: '0x8fC3B11b0dF4cD368850cf2d875A4164612A270f', // Sepolia WBTC
+    DAI: '0x83F20F44975D03b1b09e64809B757c47f942BEeA'  // Sepolia DAI
   }
 };
 
@@ -35,8 +35,8 @@ export const CONTRACT_ABIS = {
     'function getAmountsIn(uint256 amountOut, address[] calldata path) external view returns (uint256[] memory amounts)',
     'function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts)',
     'function swapTokensForExactTokens(uint256 amountOut, uint256 amountInMax, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts)',
-    'function addLiquidity(uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) external returns (uint256[] memory amounts)',
-    'function removeLiquidity(uint256 liquidity, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) external returns (uint256[] memory amounts)'
+    'function addLiquidity(address tokenA, address tokenB, uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) external returns (uint256 amountA, uint256 amountB, uint256 liquidity)',
+    'function removeLiquidity(address tokenA, address tokenB, uint256 liquidity, uint256 amountAMin, uint256 amountBMin, address to, uint256 deadline) external returns (uint256 amountA, uint256 amountB)'
   ],
   
   ERC20: [

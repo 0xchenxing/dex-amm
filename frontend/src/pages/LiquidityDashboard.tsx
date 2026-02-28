@@ -32,6 +32,7 @@ export function LiquidityDashboard() {
   const loadData = async () => {
     try {
       const allPools = await liquidityPoolAPI.getAll();
+      console.log('Debug - loadData:', allPools);
       setPools(allPools);
       if (allPools.length > 0 && !selectedPool) {
         setSelectedPool(allPools[0].id);
@@ -56,17 +57,25 @@ export function LiquidityDashboard() {
       return;
     }
 
-    if (user.balance[pool.token1] < amount1 || user.balance[pool.token2] < amount2) {
-      showNotification('余额不足', 'error');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const result = await executeAddLiquidity('dexamm', pool.token1, pool.token2, amount1, amount2);
+      console.log('Debug - addLiquidity:');
+      console.log('pool:', pool);
+      console.log('pool.token1:', pool.token1);
+      console.log('pool.token2:', pool.token2);
+      console.log('pool.token1Address:', pool.token1Address);
+      console.log('pool.token2Address:', pool.token2Address);
+      console.log('amount1:', amount1);
+      console.log('amount2:', amount2);
+      
+      // Use token addresses from database
+      console.log('Using token addresses from database:');
+      console.log('token1Address:', pool.token1Address);
+      console.log('token2Address:', pool.token2Address);
+      
+      const result = await executeAddLiquidity('dexamm', pool.token1Address, pool.token2Address, amount1, amount2);
       await liquidityPoolAPI.addLiquidity(selectedPool, amount1, amount2, result.txHash);
-      await userAPI.updateBalance(user.id, pool.token1, user.balance[pool.token1] - amount1);
-      await userAPI.updateBalance(user.id, pool.token2, user.balance[pool.token2] - amount2);
+
       showNotification(`流动性添加成功，交易哈希: ${result.txHash.substring(0, 10)}...`, 'success');
       
       setAddAmount1('');
@@ -94,7 +103,12 @@ export function LiquidityDashboard() {
 
     setIsLoading(true);
     try {
-      const result = await executeRemoveLiquidity('dexamm', pool.token1, pool.token2, amount);
+      // Use token addresses from database
+      console.log('Using token addresses from database for remove:');
+      console.log('token1Address:', pool.token1Address);
+      console.log('token2Address:', pool.token2Address);
+      
+      const result = await executeRemoveLiquidity('dexamm', pool.token1Address, pool.token2Address, amount);
       await liquidityPoolAPI.removeLiquidity(selectedPool, amount, result.txHash);
       showNotification(`流动性移除成功，交易哈希: ${result.txHash.substring(0, 10)}...`, 'success');
       setRemoveAmount('');

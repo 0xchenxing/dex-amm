@@ -6,15 +6,14 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID        int                `json:"id"`
-	Username  string             `json:"username"`
-	Password  string             `json:"password"`
-	Role      string             `json:"role"`
-	CreatedAt time.Time          `json:"createdAt"`
-	LastLogin *time.Time         `json:"lastLogin,omitempty"`
-	Email     string             `json:"email,omitempty"`
-	Balance   map[string]float64 `json:"balance,omitempty"`
-	Status    string             `json:"status,omitempty"`
+	ID        int        `json:"id"`
+	Username  string     `json:"username"`
+	Password  string     `json:"password"`
+	Role      string     `json:"role"`
+	CreatedAt time.Time  `json:"createdAt"`
+	LastLogin *time.Time `json:"lastLogin,omitempty"`
+	Email     string     `json:"email,omitempty"`
+	Status    string     `json:"status,omitempty"`
 }
 
 // UserLoginRequest represents the login request body
@@ -33,73 +32,45 @@ type UserLoginResponse struct {
 // ValidRoles defines the valid roles in the system
 var ValidRoles = []string{"trader", "liquidity", "governor", "arbitrageur", "admin"}
 
-// DemoUsers defines the demo users for the system
+// DemoUsers represents the demo users for initialization
 var DemoUsers = []User{
 	{
-		ID:       1,
-		Username: "trader",
-		Password: "123456",
-		Role:     "trader",
-		Email:    "trader@dex.com",
-		Balance: map[string]float64{
-			"ETH":  10.5,
-			"USDT": 5000,
-			"DAI":  2000,
-		},
+		Username:  "trader",
+		Password:  "123456",
+		Role:      "trader",
+		Email:     "trader@dex.com",
 		CreatedAt: time.Now(),
 		Status:    "active",
 	},
 	{
-		ID:       2,
-		Username: "liquidity",
-		Password: "123456",
-		Role:     "liquidity",
-		Email:    "liquidity@dex.com",
-		Balance: map[string]float64{
-			"ETH":  50.0,
-			"USDT": 25000,
-			"DAI":  15000,
-		},
+		Username:  "liquidity",
+		Password:  "123456",
+		Role:      "liquidity",
+		Email:     "liquidity@dex.com",
 		CreatedAt: time.Now(),
 		Status:    "active",
 	},
 	{
-		ID:       3,
-		Username: "governor",
-		Password: "123456",
-		Role:     "governor",
-		Email:    "governor@dex.com",
-		Balance: map[string]float64{
-			"ETH":  100.0,
-			"USDT": 50000,
-		},
+		Username:  "governor",
+		Password:  "123456",
+		Role:      "governor",
+		Email:     "governor@dex.com",
 		CreatedAt: time.Now(),
 		Status:    "active",
 	},
 	{
-		ID:       4,
-		Username: "arbitrageur",
-		Password: "123456",
-		Role:     "arbitrageur",
-		Email:    "arbitrageur@dex.com",
-		Balance: map[string]float64{
-			"ETH":  25.0,
-			"USDT": 15000,
-			"DAI":  8000,
-		},
+		Username:  "arbitrageur",
+		Password:  "123456",
+		Role:      "arbitrageur",
+		Email:     "arbitrageur@dex.com",
 		CreatedAt: time.Now(),
 		Status:    "active",
 	},
 	{
-		ID:       5,
-		Username: "admin",
-		Password: "123456",
-		Role:     "admin",
-		Email:    "admin@dex.com",
-		Balance: map[string]float64{
-			"ETH":  1000.0,
-			"USDT": 100000,
-		},
+		Username:  "admin",
+		Password:  "123456",
+		Role:      "admin",
+		Email:     "admin@dex.com",
 		CreatedAt: time.Now(),
 		Status:    "active",
 	},
@@ -112,6 +83,8 @@ type LiquidityPool struct {
 	Pair           string  `json:"pair"`
 	Token1         string  `json:"token1"`
 	Token2         string  `json:"token2"`
+	Token1Address  string  `json:"token1Address"`
+	Token2Address  string  `json:"token2Address"`
 	TotalLiquidity float64 `json:"totalLiquidity"`
 	Volume24h      float64 `json:"volume24h"`
 	APY            float64 `json:"apy"`
@@ -119,16 +92,6 @@ type LiquidityPool struct {
 	Reserve2       float64 `json:"reserve2"`
 	TotalSupply    float64 `json:"totalSupply"`
 	Status         string  `json:"status"`
-}
-
-// TradingPair represents a trading pair
-
-type TradingPair struct {
-	ID             string `json:"id"`
-	BaseToken      string `json:"baseToken"`
-	QuoteToken     string `json:"quoteToken"`
-	BaseTokenAddr  string `json:"baseTokenAddr"`
-	QuoteTokenAddr string `json:"quoteTokenAddr"`
 }
 
 // Trade represents a trade

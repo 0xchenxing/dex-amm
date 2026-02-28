@@ -24,7 +24,6 @@ func SetupRoutes(router *gin.Engine) error {
 
 	// Create controllers
 	authController := controllers.NewAuthController(cfg)
-	tradingPairController := controllers.NewTradingPairController(cfg, db)
 	liquidityPoolController := controllers.NewLiquidityPoolController(cfg, db)
 	tradeController := controllers.NewTradeController(cfg, db)
 	systemLogController := controllers.NewSystemLogController(cfg, db)
@@ -47,16 +46,6 @@ func SetupRoutes(router *gin.Engine) error {
 			users.GET("", middleware.JWTAuthMiddleware(), authController.GetAllUsers)
 			users.GET("/:id", middleware.JWTAuthMiddleware(), authController.GetUserByID)
 			users.PATCH("/:id/status", middleware.JWTAuthMiddleware(), authController.UpdateUserStatus)
-		}
-
-		// Trading pair routes
-		tradingPairs := api.Group("/trading-pairs")
-		{
-			tradingPairs.GET("", tradingPairController.GetAllTradingPairs)
-			tradingPairs.GET("/:id", tradingPairController.GetTradingPairByID)
-			tradingPairs.POST("", middleware.JWTAuthMiddleware(), tradingPairController.CreateTradingPair)
-			tradingPairs.PUT("/:id", middleware.JWTAuthMiddleware(), tradingPairController.UpdateTradingPair)
-			tradingPairs.DELETE("/:id", middleware.JWTAuthMiddleware(), tradingPairController.DeleteTradingPair)
 		}
 
 		// Liquidity pool routes

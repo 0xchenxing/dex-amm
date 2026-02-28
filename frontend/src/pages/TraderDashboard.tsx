@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../hooks/useNotification';
-import { tradingPairAPI, tradeAPI, userAPI } from '../services/apiService';
+import { tradeAPI, userAPI } from '../services/apiService';
 import { connectToEthereum, getAccountAddress, executeUniswapTrade } from '../services/contractService';
-import type { Trade, TradingPair } from '../types';
+import type { Trade } from '../types';
 import './TraderDashboard.css';
 
 const navItems: Array<{ key: string; label: string; icon: string }> = [
@@ -126,13 +126,7 @@ export function TraderDashboard() {
       const total = newTrade.total;
       const fee = newTrade.fee;
       
-      if (type === 'buy') {
-        await userAPI.updateBalance(user.id, baseToken, (user.balance[baseToken] || 0) + parseFloat(amount));
-        await userAPI.updateBalance(user.id, quoteToken, (user.balance[quoteToken] || 0) - total - fee);
-      } else {
-        await userAPI.updateBalance(user.id, baseToken, (user.balance[baseToken] || 0) - parseFloat(amount));
-        await userAPI.updateBalance(user.id, quoteToken, (user.balance[quoteToken] || 0) + total - fee);
-      }
+
 
       await tradeAPI.create(newTrade);
       loadData();
@@ -165,16 +159,7 @@ export function TraderDashboard() {
     }
   };
 
-  const calculateTotalBalance = () => {
-    if (!user || !user.balance) return 0;
-    let total = 0;
-    Object.entries(user.balance).forEach(([token, amount]) => {
-      if (token === 'USDT' || token === 'DAI') {
-        total += amount;
-      }
-    });
-    return total;
-  };
+
 
   const renderOverview = () => (
     <>
@@ -182,7 +167,7 @@ export function TraderDashboard() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon">💰</div>
-          <div className="stat-value">${calculateTotalBalance().toFixed(2)}</div>
+          <div className="stat-value">$0.00</div>
           <div className="stat-label">总资产价值</div>
         </div>
         <div className="stat-card">
@@ -200,14 +185,6 @@ export function TraderDashboard() {
           <div className="stat-value">68.5%</div>
           <div className="stat-label">胜率</div>
         </div>
-      </div>
-      <div className="balance-grid">
-        {user && user.balance && Object.entries(user.balance).map(([token, amount]) => (
-          <div key={token} className="balance-card">
-            <div className="balance-token">{token}</div>
-            <div className="balance-amount">{amount.toFixed(4)}</div>
-          </div>
-        ))}
       </div>
     </>
   );
@@ -384,7 +361,7 @@ export function TraderDashboard() {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon">💰</div>
-          <div className="stat-value">${calculateTotalBalance().toFixed(2)}</div>
+          <div className="stat-value">$0.00</div>
           <div className="stat-label">总资产价值</div>
         </div>
         <div className="stat-card">
@@ -394,7 +371,7 @@ export function TraderDashboard() {
         </div>
         <div className="stat-card">
           <div className="stat-icon">🪙</div>
-          <div className="stat-value">{user && user.balance ? Object.keys(user.balance).length : 0}</div>
+          <div className="stat-value">0</div>
           <div className="stat-label">持有币种</div>
         </div>
         <div className="stat-card">
@@ -415,21 +392,9 @@ export function TraderDashboard() {
             </tr>
           </thead>
           <tbody>
-            {user && user.balance && Object.entries(user.balance).map(([token, amount]) => {
-              const value = token === 'USDT' || token === 'DAI' ? amount : 0;
-              const total = calculateTotalBalance();
-              const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0';
-              
-              return (
-                <tr key={token}>
-                  <td><strong>{token}</strong></td>
-                  <td>{amount.toFixed(4)}</td>
-                  <td>${value.toFixed(2)}</td>
-                  <td className="positive">+2.5%</td>
-                  <td>{percentage}%</td>
-                </tr>
-              );
-            })}
+            <tr>
+              <td colSpan={5} className="empty-state">暂无资产数据</td>
+            </tr>
           </tbody>
         </table>
       </div>

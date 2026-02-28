@@ -239,7 +239,10 @@ export const getTradingPairAddress = async (
       ? await getUniswapFactoryContract() 
       : await getDexAmmFactoryContract();
     
-    const pairAddress = await factoryContract.getPair(tokenA, tokenB);
+    const normalizedTokenA = ethers.getAddress(tokenA.toLowerCase());
+    const normalizedTokenB = ethers.getAddress(tokenB.toLowerCase());
+    
+    const pairAddress = await factoryContract.getPair(normalizedTokenA, normalizedTokenB);
     
     if (pairAddress === ethers.ZeroAddress) {
       throw new ContractServiceError('交易对不存在', 'PAIR_NOT_FOUND');

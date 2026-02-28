@@ -1,4 +1,4 @@
-import type { User, LiquidityPool, TradingPair, Trade, SystemLog } from '../types/index';
+import type { User, LiquidityPool, Trade, SystemLog } from '../types/index';
 
 // API base URL
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -54,33 +54,6 @@ export const authAPI = {
   },
 };
 
-// 交易对相关 API
-export const tradingPairAPI = {
-  getAll: async (): Promise<TradingPair[]> => {
-    return fetchAPI('/trading-pairs');
-  },
-  getById: async (id: string): Promise<TradingPair> => {
-    return fetchAPI(`/trading-pairs/${id}`);
-  },
-  create: async (pair: TradingPair): Promise<TradingPair> => {
-    return fetchAPI('/trading-pairs', {
-      method: 'POST',
-      body: JSON.stringify(pair),
-    });
-  },
-  update: async (pair: TradingPair): Promise<TradingPair> => {
-    return fetchAPI(`/trading-pairs/${pair.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(pair),
-    });
-  },
-  delete: async (id: string): Promise<void> => {
-    return fetchAPI(`/trading-pairs/${id}`, {
-      method: 'DELETE',
-    });
-  },
-};
-
 // 系统日志相关 API
 export const systemLogAPI = {
   getAll: async (): Promise<SystemLog[]> => {
@@ -117,12 +90,7 @@ export const userAPI = {
       body: JSON.stringify({ status }),
     });
   },
-  updateBalance: async (id: number, token: string, amount: number): Promise<User> => {
-    return fetchAPI(`/users/${id}/balance`, {
-      method: 'PATCH',
-      body: JSON.stringify({ token, amount }),
-    });
-  },
+
 };
 
 // 套利相关 API

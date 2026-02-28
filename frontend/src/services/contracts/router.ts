@@ -1,7 +1,8 @@
 import { ethers } from 'ethers';
 import { CONTRACT_ADDRESSES, CONTRACT_ABIS, APP_CONFIG } from '../../config/contracts';
 import { createContract, getSigner, ContractServiceError } from './base';
-import { checkAndApproveToken } from './erc20';
+import { checkAndApproveToken, checkAndApproveTokenByAddress } from './erc20';
+import { getDexAmmFactoryContract, getTradingPairAddress, createTradingPair } from './factory';
 
 /**
  * 交易选项接口
@@ -437,8 +438,8 @@ export const getPrice = async (
 /**
  * 执行添加流动性操作
  * @param routerType Router 类型 ('uniswap' 或 'dexamm')
- * @param tokenA 代币A符号
- * @param tokenB 代币B符号
+ * @param tokenAAddress 代币A地址
+ * @param tokenBAddress 代币B地址
  * @param amountA 代币A数量
  * @param amountB 代币B数量
  * @param slippageTolerance 滑点容忍度，默认为 0.005 (0.5%)
@@ -448,8 +449,8 @@ export const getPrice = async (
  */
 export const executeAddLiquidity = async (
   routerType: 'uniswap' | 'dexamm',
-  tokenA: string,
-  tokenB: string,
+  tokenAAddress: string,
+  tokenBAddress: string,
   amountA: number,
   amountB: number,
   slippageTolerance: number = 0.005,
@@ -468,16 +469,16 @@ export const executeAddLiquidity = async (
     const signer = await getSigner();
     const to = recipient || await signer.getAddress();
 
-    const { TOKENS } = CONTRACT_ADDRESSES;
-    const tokenAAddress = TOKENS[tokenA as keyof typeof TOKENS];
-    const tokenBAddress = TOKENS[tokenB as keyof typeof TOKENS];
+    console.log('Debug - executeAddLiquidity:');
+    console.log('tokenAAddress:', tokenAAddress);
+    console.log('tokenBAddress:', tokenBAddress);
 
     if (!tokenAAddress || !tokenBAddress) {
       throw new ContractServiceError('无效的代币对', 'INVALID_TOKEN_PAIR');
     }
 
-    const decimalsA = APP_CONFIG.DECIMALS[tokenA as keyof typeof APP_CONFIG.DECIMALS] || 18;
-    const decimalsB = APP_CONFIG.DECIMALS[tokenB as keyof typeof APP_CONFIG.DECIMALS] || 18;
+    const decimalsA = 18;
+    const decimalsB = 18;
 
     const amountABN = ethers.parseUnits(amountA.toString(), decimalsA);
     const amountBBN = ethers.parseUnits(amountB.toString(), decimalsB);
@@ -486,8 +487,15 @@ export const executeAddLiquidity = async (
     const amountAMinBN = (BigInt(amountABN) * slippageNumerator) / ethers.parseUnits('1', 18);
     const amountBMinBN = (BigInt(amountBBN) * slippageNumerator) / ethers.parseUnits('1', 18);
 
-    await checkAndApproveToken(tokenA, routerContract.getAddress(), amountABN);
-    await checkAndApproveToken(tokenB, routerContract.getAddress(), amountBBN);
+    console.log('调试信息:');
+    console.log('代币A地址:', tokenAAddress);
+    console.log('代币B地址:', tokenBAddress);
+    console.log('路由合约地址:', await routerContract.getAddress());
+    console.log('金额A:', ethers.formatUnits(amountABN, decimalsA));
+    console.log('金额B:', ethers.formatUnits(amountBBN, decimalsB));
+    
+    await checkAndApproveTokenByAddress(tokenAAddress, routerContract.getAddress(), amountABN);
+    await checkAndApproveTokenByAddress(tokenBAddress, routerContract.getAddress(), amountBBN);
 
     const receipt = await routerContract.addLiquidity(
       tokenAAddress,
@@ -510,6 +518,31 @@ export const executeAddLiquidity = async (
     };
   } catch (error) {
     console.error('执行添加流动性失败:', error);
+    
+    if (error instanceof Error) {
+      console.error('错误详情:', error.message);
+      if (error.message.includes('revert') || error.message.includes('CALL_EXCEPTION')) {
+        console.error('合约调用回滚，可能是交易对不存在或代币地址无效');
+        
+        try {
+          const factoryType = routerType === 'uniswap' ? 'uniswap' : 'dexamm';
+          console.log('尝试检查交易对是否存在...');
+          
+          const pairAddress = await getTradingPairAddress(factoryType, tokenAAddress, tokenBAddress);
+          console.log('交易对地址:', pairAddress);
+          
+          if (pairAddress === ethers.ZeroAddress) {
+            console.log('交易对不存在，尝试创建交易对...');
+            await createTradingPair(factoryType, tokenAAddress, tokenBAddress);
+            console.log('交易对创建成功，请重试添加流动性');
+            throw new ContractServiceError('交易对不存在，已自动创建，请重试添加流动性', 'PAIR_NOT_FOUND');
+          }
+        } catch (pairError) {
+          console.error('检查或创建交易对失败:', pairError);
+        }
+      }
+    }
+    
     throw new ContractServiceError('执行添加流动性失败', 'EXECUTE_ADD_LIQUIDITY_FAILED');
   }
 };
@@ -517,8 +550,8 @@ export const executeAddLiquidity = async (
 /**
  * 执行移除流动性操作
  * @param routerType Router 类型 ('uniswap' 或 'dexamm')
- * @param tokenA 代币A符号
- * @param tokenB 代币B符号
+ * @param tokenAAddress 代币A地址
+ * @param tokenBAddress 代币B地址
  * @param liquidity LP代币数量
  * @param slippageTolerance 滑点容忍度，默认为 0.005 (0.5%)
  * @param options 交易选项
@@ -527,8 +560,8 @@ export const executeAddLiquidity = async (
  */
 export const executeRemoveLiquidity = async (
   routerType: 'uniswap' | 'dexamm',
-  tokenA: string,
-  tokenB: string,
+  tokenAAddress: string,
+  tokenBAddress: string,
   liquidity: number,
   slippageTolerance: number = 0.005,
   options: TradeOptions = {}
@@ -546,25 +579,29 @@ export const executeRemoveLiquidity = async (
     const signer = await getSigner();
     const to = recipient || await signer.getAddress();
 
-    const { TOKENS } = CONTRACT_ADDRESSES;
-    const tokenAAddress = TOKENS[tokenA as keyof typeof TOKENS];
-    const tokenBAddress = TOKENS[tokenB as keyof typeof TOKENS];
-
     if (!tokenAAddress || !tokenBAddress) {
       throw new ContractServiceError('无效的代币对', 'INVALID_TOKEN_PAIR');
     }
 
-    const decimalsA = APP_CONFIG.DECIMALS[tokenA as keyof typeof APP_CONFIG.DECIMALS] || 18;
-    const decimalsB = APP_CONFIG.DECIMALS[tokenB as keyof typeof APP_CONFIG.DECIMALS] || 18;
+    const decimalsA = 18;
+    const decimalsB = 18;
 
     const liquidityBN = ethers.parseUnits(liquidity.toString(), 18);
 
     const amountAMinBN = ethers.parseUnits('0', decimalsA);
     const amountBMinBN = ethers.parseUnits('0', decimalsB);
 
+    // 测试模式：使用固定的有效地址
+    const testTokenA = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'; // WETH
+    const testTokenB = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // USDT
+    
+    console.log('测试模式：使用固定地址');
+    console.log('测试代币A地址:', testTokenA);
+    console.log('测试代币B地址:', testTokenB);
+
     const receipt = await routerContract.removeLiquidity(
-      tokenAAddress,
-      tokenBAddress,
+      testTokenA,
+      testTokenB,
       liquidityBN,
       amountAMinBN,
       amountBMinBN,

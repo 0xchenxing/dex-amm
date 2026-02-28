@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useNotification } from '../hooks/useNotification';
 import { liquidityPoolAPI, tradingPairAPI, tradeAPI, systemLogAPI, userAPI } from '../services/apiService';
-import type { SystemLog, LiquidityPool, User, TradingPair } from '../types/index';
+import type { SystemLog, LiquidityPool, User } from '../types/index';
 import './AdminDashboard.css';
 
 const navItems: Array<{ key: string; label: string; icon: string }> = [
   { key: 'overview', label: '系统概览', icon: '📊' },
   { key: 'users', label: '用户管理', icon: '👥' },
   { key: 'trades', label: '交易监控', icon: '💱' },
-  { key: 'liquidity', label: '交易对管理', icon: '💧' },
+  { key: 'liquidity', label: '流动性管理', icon: '💧' },
   { key: 'security', label: '安全管理', icon: '🔒' },
   { key: 'settings', label: '系统设置', icon: '⚙️' },
 ];
@@ -21,13 +21,12 @@ export function AdminDashboard() {
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
   const [searchUser, setSearchUser] = useState('');
-  const [pools, setPools] = useState<TradingPair[]>([]);
+  const [pools, setPools] = useState<LiquidityPool[]>([]);
   const [newPool, setNewPool] = useState({
     token1: '',
+    token1Address: '',
     token2: '',
-    token1Addr: '',
-    token2Addr: '',
-    apy: 0
+    token2Address: ''
   });
   const [isCreatingPool, setIsCreatingPool] = useState(false);
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
@@ -41,14 +40,14 @@ export function AdminDashboard() {
     
     setLoading(prev => ({ ...prev, overview: true }));
     try {
-      const [pairsResult, logsResult, usersResult] = await Promise.allSettled([
-        tradingPairAPI.getAll(),
+      const [poolsResult, logsResult, usersResult] = await Promise.allSettled([
+        liquidityPoolAPI.getAll(),
         systemLogAPI.getAll(),
         userAPI.getAll()
       ]);
 
-      if (pairsResult.status === 'fulfilled') {
-        setPools(Array.isArray(pairsResult.value) ? pairsResult.value : []);
+      if (poolsResult.status === 'fulfilled') {
+        setPools(Array.isArray(poolsResult.value) ? poolsResult.value : []);
       }
 
       if (logsResult.status === 'fulfilled' && logsResult.value) {
@@ -96,16 +95,16 @@ export function AdminDashboard() {
     }
   };
 
-  const loadTradingPairsData = async () => {
+  const loadLiquidityPoolsData = async () => {
     if (loading.liquidity) return;
     
     setLoading(prev => ({ ...prev, liquidity: true }));
     try {
-      const pairs = await tradingPairAPI.getAll();
-      setPools(Array.isArray(pairs) ? pairs : []);
+      const pools = await liquidityPoolAPI.getAll();
+      setPools(Array.isArray(pools) ? pools : []);
     } catch (error) {
-      console.error('加载交易对数据失败:', error);
-      showNotification('加载交易对数据失败', 'error');
+      console.error('加载流动性池数据失败:', error);
+      showNotification('加载流动性池数据失败', 'error');
     } finally {
       setLoading(prev => ({ ...prev, liquidity: false }));
     }
@@ -138,7 +137,7 @@ export function AdminDashboard() {
         loadTradesData();
         break;
       case 'liquidity':
-        loadTradingPairsData();
+        loadLiquidityPoolsData();
         break;
       case 'security':
         loadSecurityData();
@@ -163,30 +162,38 @@ export function AdminDashboard() {
     }
   };
 
-  const createTradingPair = async () => {
-    if (!newPool.token1 || !newPool.token2 || newPool.token1 === newPool.token2) {
-      showNotification('请输入有效的代币对', 'error');
+  const createLiquidityPool = async () => {
+    if (!newPool.token1 || !newPool.token1Address || !newPool.token2 || !newPool.token2Address || newPool.token1 === newPool.token2) {
+      showNotification('请输入有效的代币信息', 'error');
       return;
     }
 
     setIsCreatingPool(true);
     try {
-      const pairId = `${newPool.token1}-${newPool.token2}`;
-      const tradingPair: TradingPair = {
-        id: pairId,
-        baseToken: newPool.token1,
-        quoteToken: newPool.token2,
-        baseTokenAddr: newPool.token1Addr,
-        quoteTokenAddr: newPool.token2Addr
+      const pair = `${newPool.token1}-${newPool.token2}`;
+      const liquidityPool: LiquidityPool = {
+        id: pair,
+        pair: pair,
+        token1: newPool.token1,
+        token2: newPool.token2,
+        token1Address: newPool.token1Address,
+        token2Address: newPool.token2Address,
+        totalLiquidity: 0,
+        volume24h: 0,
+        apy: 0,
+        reserve1: 0,
+        reserve2: 0,
+        totalSupply: 0,
+        status: 'active'
       };
 
-      await tradingPairAPI.create(tradingPair);
-      await loadTradingPairsData();
-      setNewPool({ token1: '', token2: '', token1Addr: '', token2Addr: '', apy: 0 });
-      showNotification('交易对创建成功', 'success');
+      await liquidityPoolAPI.create(liquidityPool);
+      await loadLiquidityPoolsData();
+      setNewPool({ token1: '', token1Address: '', token2: '', token2Address: '' });
+      showNotification('流动性池创建成功', 'success');
     } catch (error) {
-      console.error('创建交易对失败:', error);
-      showNotification('创建交易对失败，请稍后重试', 'error');
+      console.error('创建流动性池失败:', error);
+      showNotification('创建流动性池失败，请稍后重试', 'error');
     } finally {
       setIsCreatingPool(false);
     }
@@ -222,7 +229,7 @@ export function AdminDashboard() {
           <div className="stat-card">
             <div className="stat-icon">💧</div>
             <div className="stat-value">{totalPools}</div>
-            <div className="stat-label">交易对</div>
+            <div className="stat-label">流动性池</div>
           </div>
         </div>
 
@@ -351,13 +358,13 @@ export function AdminDashboard() {
     );
   };
 
-  const renderTradingPairs = () => {
+  const renderLiquidityPools = () => {
     return (
       <>
-        <h2 className="section-title">交易对管理</h2>
+        <h2 className="section-title">流动性管理</h2>
         
         <div className="card">
-          <h3 className="card-title">创建交易对</h3>
+          <h3 className="card-title">创建流动性池</h3>
           <div className="form-grid">
             <div className="form-group">
               <label>代币1</label>
@@ -373,8 +380,8 @@ export function AdminDashboard() {
               <label>代币1地址</label>
               <input
                 type="text"
-                value={newPool.token1Addr}
-                onChange={(e) => setNewPool({ ...newPool, token1Addr: e.target.value })}
+                value={newPool.token1Address}
+                onChange={(e) => setNewPool({ ...newPool, token1Address: e.target.value })}
                 placeholder="例如: 0x..."
                 className="form-input"
               />
@@ -393,8 +400,8 @@ export function AdminDashboard() {
               <label>代币2地址</label>
               <input
                 type="text"
-                value={newPool.token2Addr}
-                onChange={(e) => setNewPool({ ...newPool, token2Addr: e.target.value })}
+                value={newPool.token2Address}
+                onChange={(e) => setNewPool({ ...newPool, token2Address: e.target.value })}
                 placeholder="例如: 0x..."
                 className="form-input"
               />
@@ -402,39 +409,57 @@ export function AdminDashboard() {
             <div className="form-group full-width">
               <button 
                 className="btn btn-primary" 
-                onClick={createTradingPair}
+                onClick={createLiquidityPool}
                 disabled={isCreatingPool}
               >
-                {isCreatingPool ? '创建中...' : '创建交易对'}
+                {isCreatingPool ? '创建中...' : '创建流动性池'}
               </button>
             </div>
           </div>
         </div>
 
-        <h3 className="section-subtitle">现有交易对</h3>
+        <h3 className="section-subtitle">现有流动性池</h3>
         <div className="pools-grid">
-          {pools.map(pair => {
-            if (!pair.baseToken || !pair.quoteToken) return null;
+          {pools.map(pool => {
+            if (!pool.pair || !pool.token1 || !pool.token2) return null;
             
             return (
-              <div key={pair.id} className="pool-admin-card">
-                <h3>{pair.baseToken}/{pair.quoteToken}</h3>
+              <div key={pool.id} className="pool-admin-card">
+                <h3>{pool.pair}</h3>
                 <div className="pool-admin-stats">
                   <div className="admin-stat">
-                    <span>基础代币</span>
-                    <span>{pair.baseToken}</span>
+                    <span>代币1</span>
+                    <span>{pool.token1}</span>
                   </div>
                   <div className="admin-stat">
-                    <span>基础代币地址</span>
-                    <span>{formatAddress(pair.baseTokenAddr) || '-'}</span>
+                    <span>代币1地址</span>
+                    <span>{formatAddress(pool.token1Address) || '-'}</span>
                   </div>
                   <div className="admin-stat">
-                    <span>报价代币</span>
-                    <span>{pair.quoteToken}</span>
+                    <span>代币2</span>
+                    <span>{pool.token2}</span>
                   </div>
                   <div className="admin-stat">
-                    <span>报价代币地址</span>
-                    <span>{formatAddress(pair.quoteTokenAddr) || '-'}</span>
+                    <span>代币2地址</span>
+                    <span>{formatAddress(pool.token2Address) || '-'}</span>
+                  </div>
+                  <div className="admin-stat">
+                    <span>总流动性</span>
+                    <span>${pool.totalLiquidity.toLocaleString()}</span>
+                  </div>
+                  <div className="admin-stat">
+                    <span>24h交易量</span>
+                    <span>${pool.volume24h.toLocaleString()}</span>
+                  </div>
+                  <div className="admin-stat">
+                    <span>年化收益率</span>
+                    <span>{pool.apy.toFixed(2)}%</span>
+                  </div>
+                  <div className="admin-stat">
+                    <span>状态</span>
+                    <span className={`status-badge ${pool.status}`}>
+                      {pool.status === 'active' ? '活跃' : '非活跃'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -532,7 +557,7 @@ export function AdminDashboard() {
         {activeSection === 'overview' && renderOverview()}
         {activeSection === 'users' && renderUsers()}
         {activeSection === 'trades' && renderTrades()}
-        {activeSection === 'liquidity' && renderTradingPairs()}
+        {activeSection === 'liquidity' && renderLiquidityPools()}
         {activeSection === 'security' && renderSecurity()}
         {activeSection === 'settings' && renderSettings()}
       </div>

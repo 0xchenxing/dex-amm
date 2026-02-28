@@ -316,3 +316,57 @@ export const getAllTokenBalances = async (account: string): Promise<Record<strin
     throw new ContractServiceError('获取所有代币余额失败', 'GET_ALL_BALANCES_FAILED');
   }
 };
+
+/**
+ * 按代币地址检查并授权代币
+ * @param tokenAddress 代币合约地址
+ * @param spender 被授权方地址
+ * @param requiredAmount 需要的授权额度
+ * @returns 是否进行了授权操作
+ * @throws {ContractServiceError} 当检查并授权代币失败时
+ */
+export const checkAndApproveTokenByAddress = async (
+  tokenAddress: string,
+  spender: string,
+  requiredAmount: ethers.BigNumberish
+): Promise<boolean> => {
+  try {
+    // 先转换为小写，再使用 getAddress 进行校验和验证
+    const normalizedTokenAddress = ethers.getAddress(tokenAddress.toLowerCase());
+    const normalizedSpender = ethers.getAddress(spender.toLowerCase());
+    
+    const tokenContract = await getERC20Contract(normalizedTokenAddress);
+    const signer = await getSigner();
+    const owner = await signer.getAddress();
+    
+    try {
+      // 尝试获取授权额度
+      const currentAllowance = await tokenContract.getAllowance(owner, normalizedSpender);
+      const requiredAmountBN = BigInt(requiredAmount);
+      
+      console.log(`检查代币授权 - 地址: ${normalizedTokenAddress}`);
+      console.log(`当前授权额度: ${currentAllowance}`);
+      console.log(`需要的授权额度: ${requiredAmountBN}`);
+      
+      if (BigInt(currentAllowance) < requiredAmountBN) {
+        console.log(`授权额度不足，正在授权...`);
+        await tokenContract.approve(normalizedSpender, ethers.MaxUint256);
+        console.log(`授权成功`);
+        return true;
+      }
+      
+      console.log(`授权额度充足，无需授权`);
+      return false;
+    } catch (error) {
+      console.error('获取授权额度失败，直接尝试授权:', error);
+      // 获取授权额度失败，直接尝试授权
+      console.log(`直接尝试授权...`);
+      await tokenContract.approve(normalizedSpender, ethers.MaxUint256);
+      console.log(`授权成功`);
+      return true;
+    }
+  } catch (error) {
+    console.error('按地址检查并授权代币失败:', error);
+    throw new ContractServiceError('按地址检查并授权代币失败', 'CHECK_APPROVE_BY_ADDRESS_FAILED');
+  }
+};

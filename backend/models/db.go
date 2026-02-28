@@ -62,52 +62,22 @@ func createTables(db *sql.DB) error {
 		return fmt.Errorf("error creating users table: %v", err)
 	}
 
-	// Create user_balances table
-	userBalancesTable := `
-	CREATE TABLE IF NOT EXISTS user_balances (
-		id INTEGER PRIMARY KEY AUTO_INCREMENT,
-		user_id INTEGER NOT NULL,
-		token VARCHAR(20) NOT NULL,
-		balance DECIMAL(30, 18) NOT NULL DEFAULT 0,
-		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-		UNIQUE(user_id, token)
-	);
-	`
-	_, err = db.Exec(userBalancesTable)
-	if err != nil {
-		return fmt.Errorf("error creating user_balances table: %v", err)
-	}
-
-	// Create trading_pairs table
-	tradingPairsTable := `
-	CREATE TABLE IF NOT EXISTS trading_pairs (
-		id VARCHAR(100) PRIMARY KEY,
-		base_token VARCHAR(50) NOT NULL,
-		quote_token VARCHAR(50) NOT NULL,
-		base_token_address VARCHAR(255) NOT NULL,
-		quote_token_address VARCHAR(255) NOT NULL
-	);
-	`
-
-	_, err = db.Exec(tradingPairsTable)
-	if err != nil {
-		return fmt.Errorf("error creating trading_pairs table: %v", err)
-	}
-
 	// Create liquidity_pools table
 	liquidityPoolsTable := `
 	CREATE TABLE IF NOT EXISTS liquidity_pools (
-		id VARCHAR(50) PRIMARY KEY,
-		pair VARCHAR(50) NOT NULL,
-		token1 VARCHAR(20) NOT NULL,
-		token2 VARCHAR(20) NOT NULL,
-		total_liquidity DECIMAL(30, 2) NOT NULL,
-		volume24h DECIMAL(30, 2) NOT NULL,
+		id VARCHAR(100) PRIMARY KEY,
+		pair VARCHAR(100) NOT NULL,
+		token1 VARCHAR(50) NOT NULL,
+		token2 VARCHAR(50) NOT NULL,
+		token1_address VARCHAR(255) NOT NULL,
+		token2_address VARCHAR(255) NOT NULL,
+		total_liquidity DECIMAL(30, 10) NOT NULL,
+		volume24h DECIMAL(30, 10) NOT NULL,
 		apy DECIMAL(10, 2) NOT NULL,
-		reserve1 DECIMAL(30, 18) NOT NULL,
-		reserve2 DECIMAL(30, 18) NOT NULL,
-		total_supply DECIMAL(30, 18) NOT NULL,
-		status VARCHAR(10) NOT NULL CHECK (status IN ('active', 'inactive')),
+		reserve1 DECIMAL(30, 10) NOT NULL,
+		reserve2 DECIMAL(30, 10) NOT NULL,
+		total_supply DECIMAL(30, 10) NOT NULL,
+		status VARCHAR(20),
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 	);
@@ -231,11 +201,11 @@ func createTables(db *sql.DB) error {
 	priceHistoryTable := `
 	CREATE TABLE IF NOT EXISTS price_history (
 		id INTEGER PRIMARY KEY AUTO_INCREMENT,
-		pair_id VARCHAR(50) NOT NULL,
+		pair_id VARCHAR(100) NOT NULL,
 		price DECIMAL(30, 18) NOT NULL,
 		timestamp DATETIME NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (pair_id) REFERENCES trading_pairs(id) ON DELETE CASCADE
+		FOREIGN KEY (pair_id) REFERENCES liquidity_pools(id) ON DELETE CASCADE
 	);
 	`
 	_, err = db.Exec(priceHistoryTable)
@@ -278,72 +248,14 @@ func initializeDemoData(db *sql.DB) error {
 		userIDs[user.Username] = int(userID)
 	}
 
-	// Insert user balances
-	userBalances := []struct {
-		username string
-		token    string
-		balance  float64
-	}{
-		{"trader", "ETH", 10.5},
-		{"trader", "USDT", 5000},
-		{"trader", "DAI", 2000},
-		{"trader", "WBTC", 0.5},
-		{"liquidity", "ETH", 50.0},
-		{"liquidity", "USDT", 25000},
-		{"liquidity", "DAI", 15000},
-		{"liquidity", "WBTC", 2.0},
-		{"governor", "ETH", 100.0},
-		{"governor", "USDT", 50000},
-		{"governor", "DEX", 10000},
-		{"arbitrageur", "ETH", 25.0},
-		{"arbitrageur", "USDT", 15000},
-		{"arbitrageur", "DAI", 8000},
-		{"arbitrageur", "WBTC", 1.0},
-		{"admin", "ETH", 1000.0},
-		{"admin", "USDT", 100000},
-		{"admin", "DEX", 50000},
-	}
-
-	for _, ub := range userBalances {
-		userID := userIDs[ub.username]
-		_, err := db.Exec(
-			"INSERT INTO user_balances (user_id, token, balance) VALUES (?, ?, ?)",
-			userID, ub.token, ub.balance,
-		)
-		if err != nil {
-			return fmt.Errorf("error inserting balance for %s: %v", ub.username, err)
-		}
-	}
-
-	// Insert demo trading pairs
-	tradingPairs := []struct {
-		id                string
-		baseToken         string
-		quoteToken        string
-		baseTokenAddress  string
-		quoteTokenAddress string
-	}{
-		{"ETH-USDT", "ETH", "USDT", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
-		{"WBTC-USDT", "WBTC", "USDT", "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
-		{"DAI-USDT", "DAI", "USDT", "0x6B175474E89094C44Da98b954EedeAC495271d0F", "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
-	}
-
-	for _, pair := range tradingPairs {
-		_, err := db.Exec(
-			"INSERT INTO trading_pairs (id, base_token, quote_token, base_token_address, quote_token_address) VALUES (?, ?, ?, ?, ?)",
-			pair.id, pair.baseToken, pair.quoteToken, pair.baseTokenAddress, pair.quoteTokenAddress,
-		)
-		if err != nil {
-			return fmt.Errorf("error inserting demo trading pair %s: %v", pair.id, err)
-		}
-	}
-
 	// Insert demo liquidity pools
 	liquidityPools := []struct {
 		id             string
 		pair           string
 		token1         string
 		token2         string
+		token1Address  string
+		token2Address  string
 		totalLiquidity float64
 		volume24h      float64
 		apy            float64
@@ -351,15 +263,15 @@ func initializeDemoData(db *sql.DB) error {
 		reserve2       float64
 		totalSupply    float64
 	}{
-		{"ETH-USDT", "ETH/USDT", "ETH", "USDT", 1250000, 850000, 15.2, 500, 1225000, 25000},
-		{"WBTC-USDT", "WBTC/USDT", "WBTC", "USDT", 2100000, 1200000, 18.5, 48.5, 2097500, 32000},
-		{"DAI-USDT", "DAI/USDT", "DAI", "USDT", 800000, 320000, 8.3, 400000, 400000, 20000},
+		{"ETH-USDT", "ETH/USDT", "ETH", "USDT", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 1250000, 850000, 15.2, 500, 1225000, 25000},
+		{"WBTC-USDT", "WBTC/USDT", "WBTC", "USDT", "0x8fC3B11b0dF4cD368850cf2d875A4164612A270f", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 2100000, 1200000, 18.5, 48.5, 2097500, 32000},
+		{"DAI-USDT", "DAI/USDT", "DAI", "USDT", "0x83F20F44975D03b1b09e64809B757c47f942BEeA", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 800000, 320000, 8.3, 400000, 400000, 20000},
 	}
 
 	for _, pool := range liquidityPools {
 		_, err := db.Exec(
-			"INSERT INTO liquidity_pools (id, pair, token1, token2, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			pool.id, pool.pair, pool.token1, pool.token2, pool.totalLiquidity, pool.volume24h, pool.apy, pool.reserve1, pool.reserve2, pool.totalSupply, "active",
+			"INSERT INTO liquidity_pools (id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			pool.id, pool.pair, pool.token1, pool.token2, pool.token1Address, pool.token2Address, pool.totalLiquidity, pool.volume24h, pool.apy, pool.reserve1, pool.reserve2, pool.totalSupply, "active",
 		)
 		if err != nil {
 			return fmt.Errorf("error inserting demo liquidity pool %s: %v", pool.id, err)
@@ -488,9 +400,6 @@ func (db *DB) FindUserByUsernameAndPassword(username, password, role string) (*U
 		return nil, false
 	}
 
-	// Get user balances from user_balances table
-	user.Balance = db.getUserBalances(user.ID)
-
 	return &user, true
 }
 
@@ -516,41 +425,13 @@ func (db *DB) GetUserByID(userID int) (*User, bool) {
 		return nil, false
 	}
 
-	// Get user balances from user_balances table
-	user.Balance = db.getUserBalances(user.ID)
-
 	return &user, true
-}
-
-// getUserBalances gets all balances for a user
-func (db *DB) getUserBalances(userID int) map[string]float64 {
-	balances := make(map[string]float64)
-
-	rows, err := db.db.Query(
-		"SELECT token, balance FROM user_balances WHERE user_id = ?",
-		userID,
-	)
-	if err != nil {
-		return balances
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var token string
-		var balance float64
-		if err := rows.Scan(&token, &balance); err != nil {
-			continue
-		}
-		balances[token] = balance
-	}
-
-	return balances
 }
 
 // GetAllLiquidityPools gets all liquidity pools
 func (db *DB) GetAllLiquidityPools() ([]LiquidityPool, error) {
 	rows, err := db.db.Query(`
-		SELECT id, pair, token1, token2, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status
+		SELECT id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status
 		FROM liquidity_pools
 	`)
 	if err != nil {
@@ -562,7 +443,7 @@ func (db *DB) GetAllLiquidityPools() ([]LiquidityPool, error) {
 	for rows.Next() {
 		var pool LiquidityPool
 		if err := rows.Scan(
-			&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.TotalLiquidity, &pool.Volume24h, &pool.APY, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
+			&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.Token1Address, &pool.Token2Address, &pool.TotalLiquidity, &pool.Volume24h, &pool.APY, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
 		); err != nil {
 			continue
 		}
@@ -576,11 +457,11 @@ func (db *DB) GetAllLiquidityPools() ([]LiquidityPool, error) {
 func (db *DB) GetLiquidityPoolByID(id string) (*LiquidityPool, error) {
 	var pool LiquidityPool
 	err := db.db.QueryRow(`
-		SELECT id, pair, token1, token2, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status
+		SELECT id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status
 		FROM liquidity_pools
 		WHERE id = ?
 	`, id).Scan(
-		&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.TotalLiquidity, &pool.Volume24h, &pool.APY, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
+		&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.Token1Address, &pool.Token2Address, &pool.TotalLiquidity, &pool.Volume24h, &pool.APY, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
 	)
 	if err != nil {
 		return nil, err
@@ -592,9 +473,9 @@ func (db *DB) GetLiquidityPoolByID(id string) (*LiquidityPool, error) {
 // CreateLiquidityPool creates a new liquidity pool
 func (db *DB) CreateLiquidityPool(pool LiquidityPool) error {
 	_, err := db.db.Exec(`
-		INSERT INTO liquidity_pools (id, pair, token1, token2, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, pool.ID, pool.Pair, pool.Token1, pool.Token2, pool.TotalLiquidity, pool.Volume24h, pool.APY, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status)
+		INSERT INTO liquidity_pools (id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, pool.ID, pool.Pair, pool.Token1, pool.Token2, pool.Token1Address, pool.Token2Address, pool.TotalLiquidity, pool.Volume24h, pool.APY, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status)
 	return err
 }
 
@@ -602,97 +483,15 @@ func (db *DB) CreateLiquidityPool(pool LiquidityPool) error {
 func (db *DB) UpdateLiquidityPool(pool LiquidityPool) error {
 	_, err := db.db.Exec(`
 		UPDATE liquidity_pools
-		SET pair = ?, token1 = ?, token2 = ?, total_liquidity = ?, volume24h = ?, apy = ?, reserve1 = ?, reserve2 = ?, total_supply = ?, status = ?
+		SET pair = ?, token1 = ?, token2 = ?, token1_address = ?, token2_address = ?, total_liquidity = ?, volume24h = ?, apy = ?, reserve1 = ?, reserve2 = ?, total_supply = ?, status = ?
 		WHERE id = ?
-	`, pool.Pair, pool.Token1, pool.Token2, pool.TotalLiquidity, pool.Volume24h, pool.APY, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status, pool.ID)
+	`, pool.Pair, pool.Token1, pool.Token2, pool.Token1Address, pool.Token2Address, pool.TotalLiquidity, pool.Volume24h, pool.APY, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status, pool.ID)
 	return err
 }
 
 // DeleteLiquidityPool deletes a liquidity pool
 func (db *DB) DeleteLiquidityPool(id string) error {
 	_, err := db.db.Exec("DELETE FROM liquidity_pools WHERE id = ?", id)
-	return err
-}
-
-// GetAllTradingPairs gets all trading pairs
-func (db *DB) GetAllTradingPairs() ([]TradingPair, error) {
-	rows, err := db.db.Query(`
-		SELECT id, base_token, quote_token, base_token_address, quote_token_address
-		FROM trading_pairs
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var pairs []TradingPair
-	for rows.Next() {
-		var pair TradingPair
-		if err := rows.Scan(
-			&pair.ID, &pair.BaseToken, &pair.QuoteToken, &pair.BaseTokenAddr, &pair.QuoteTokenAddr,
-		); err != nil {
-			continue
-		}
-		pairs = append(pairs, pair)
-	}
-
-	return pairs, nil
-}
-
-// GetTradingPairByID gets a trading pair by ID
-func (db *DB) GetTradingPairByID(id string) (*TradingPair, error) {
-	var pair TradingPair
-	err := db.db.QueryRow(`
-		SELECT id, base_token, quote_token, base_token_address, quote_token_address
-		FROM trading_pairs
-		WHERE id = ?
-	`, id).Scan(
-		&pair.ID, &pair.BaseToken, &pair.QuoteToken, &pair.BaseTokenAddr, &pair.QuoteTokenAddr,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pair, nil
-}
-
-// CreateTradingPair creates a new trading pair
-func (db *DB) CreateTradingPair(pair TradingPair) error {
-	fmt.Printf("Creating trading pair: %+v\n", pair)
-
-	result, err := db.db.Exec(`
-		INSERT INTO trading_pairs (id, base_token, quote_token, base_token_address, quote_token_address)
-		VALUES (?, ?, ?, ?, ?)
-	`, pair.ID, pair.BaseToken, pair.QuoteToken, pair.BaseTokenAddr, pair.QuoteTokenAddr)
-	if err != nil {
-		fmt.Printf("Error executing SQL: %v\n", err)
-		return fmt.Errorf("failed to insert trading pair: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("no rows were inserted, possibly duplicate ID: %s", pair.ID)
-	}
-
-	return nil
-}
-
-// UpdateTradingPair updates a trading pair
-func (db *DB) UpdateTradingPair(pair TradingPair) error {
-	_, err := db.db.Exec(`
-		UPDATE trading_pairs
-		SET base_token = ?, quote_token = ?, base_token_address = ?, quote_token_address = ?
-		WHERE id = ?
-	`, pair.BaseToken, pair.QuoteToken, pair.BaseTokenAddr, pair.QuoteTokenAddr, pair.ID)
-	return err
-}
-
-// DeleteTradingPair deletes a trading pair
-func (db *DB) DeleteTradingPair(id string) error {
-	_, err := db.db.Exec("DELETE FROM trading_pairs WHERE id = ?", id)
 	return err
 }
 
@@ -856,7 +655,6 @@ func (db *DB) GetAllUsers() ([]User, error) {
 		if lastLogin.Valid {
 			user.LastLogin = &lastLogin.Time
 		}
-		user.Balance = db.getUserBalances(user.ID)
 		users = append(users, user)
 	}
 
