@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../hooks/useNotification';
-import { tradeAPI, userAPI } from '../services/apiService';
-import { connectToEthereum, getAccountAddress, executeUniswapTrade } from '../services/contractService';
-import type { Trade } from '../types';
+import { tradeAPI, userAPI, liquidityPoolAPI } from '../services/apiService';
+import { getSigner, ERC20, SwapRouter02 } from '../services/contractService';
+import type { Trade, LiquidityPool } from '../types';
 import './TraderDashboard.css';
 
 const navItems: Array<{ key: string; label: string; icon: string }> = [
@@ -19,9 +19,9 @@ export function TraderDashboard() {
   const { user } = useAuth();
   const { showNotification, NotificationComponent } = useNotification();
   const [activeSection, setActiveSection] = useState('overview');
-  const [tradingPairs, setTradingPairs] = useState<TradingPair[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [orders, setOrders] = useState<Trade[]>([]);
+  const [liquidityPools, setLiquidityPools] = useState<LiquidityPool[]>([]);
   
   const [ethereumAddress, setEthereumAddress] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -41,14 +41,16 @@ export function TraderDashboard() {
 
   const connectToMetaMask = async () => {
     try {
-      const provider = await connectToEthereum();
-      if (provider) {
-        const address = await getAccountAddress();
-        if (address) {
-          setEthereumAddress(address);
-          setIsConnected(true);
-          showNotification('成功连接到MetaMask', 'success');
-        }
+      if (!window.ethereum) {
+        showNotification('请安装 MetaMask 钱包', 'error');
+        return;
+      }
+      const signer = await getSigner();
+      const address = await signer.getAddress();
+      if (address) {
+        setEthereumAddress(address);
+        setIsConnected(true);
+        showNotification('成功连接到MetaMask', 'success');
       }
     } catch (error) {
       console.error('连接MetaMask失败:', error);
@@ -58,8 +60,8 @@ export function TraderDashboard() {
 
   const loadData = async () => {
     try {
-      const pairs = await tradingPairAPI.getAll();
-      setTradingPairs(pairs);
+      const pools = await liquidityPoolAPI.getAll();
+      setLiquidityPools(pools);
       
       if (user) {
         const userTrades = await tradeAPI.getByUser(user.id.toString());
@@ -73,7 +75,7 @@ export function TraderDashboard() {
   };
 
   const getCurrentPrice = (pairId: string) => {
-    const pair = tradingPairs.find(p => p.id === pairId);
+    const pool = liquidityPools.find(p => p.id === pairId);
     return 0;
   };
 
@@ -93,40 +95,39 @@ export function TraderDashboard() {
     setIsLoading(true);
 
     try {
-      const pair = type === 'buy' ? buyPair : sellPair;
+      const pairId = type === 'buy' ? buyPair : sellPair;
       const amount = type === 'buy' ? buyAmount : sellAmount;
       const price = type === 'buy' ? buyPrice : sellPrice;
 
       if (!amount || parseFloat(amount) <= 0) {
         showNotification('请输入有效的交易数量', 'error');
+        setIsLoading(false);
         return;
       }
 
       if (!price || parseFloat(price) <= 0) {
         showNotification('请输入有效的交易价格', 'error');
+        setIsLoading(false);
         return;
       }
 
       const tradePrice = parseFloat(price);
+      const tradeAmount = parseFloat(amount);
+      const total = tradeAmount * tradePrice;
+      const fee = total * 0.003;
 
-      const newTrade = await executeUniswapTrade(
-        pair,
-        type,
-        parseFloat(amount),
-        tradePrice,
-        ethereumAddress
-      );
-
-      if (!newTrade) {
-        showNotification(`${type === 'buy' ? '买入' : '卖出'}失败`, 'error');
-        return;
-      }
-
-      const [baseToken, quoteToken] = pair.split('-');
-      const total = newTrade.total;
-      const fee = newTrade.fee;
-      
-
+      const newTrade: Trade = {
+        id: Date.now().toString(),
+        user: user.id.toString(),
+        pair: pairId,
+        type: type,
+        amount: tradeAmount,
+        price: tradePrice,
+        total: total,
+        fee: fee,
+        timestamp: new Date().toISOString(),
+        status: 'completed',
+      };
 
       await tradeAPI.create(newTrade);
       loadData();
@@ -203,9 +204,9 @@ export function TraderDashboard() {
           <div className="form-group">
             <label>交易对</label>
             <select value={buyPair} onChange={(e) => setBuyPair(e.target.value)}>
-              {tradingPairs.map(pair => (
-                <option key={pair.id} value={pair.id}>
-                  {pair.baseToken}/{pair.quoteToken}
+              {liquidityPools.map(pool => (
+                <option key={pool.id} value={pool.id}>
+                  {pool.token1}/{pool.token2}
                 </option>
               ))}
             </select>
@@ -257,9 +258,9 @@ export function TraderDashboard() {
           <div className="form-group">
             <label>交易对</label>
             <select value={sellPair} onChange={(e) => setSellPair(e.target.value)}>
-              {tradingPairs.map(pair => (
-                <option key={pair.id} value={pair.id}>
-                  {pair.baseToken}/{pair.quoteToken}
+              {liquidityPools.map(pool => (
+                <option key={pool.id} value={pool.id}>
+                  {pool.token1}/{pool.token2}
                 </option>
               ))}
             </select>
@@ -476,4 +477,3 @@ export function TraderDashboard() {
     </Layout>
   );
 }
-

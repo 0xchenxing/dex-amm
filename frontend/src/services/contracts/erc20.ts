@@ -1,372 +1,280 @@
-import { ethers } from 'ethers';
-import { CONTRACT_ADDRESSES, CONTRACT_ABIS, APP_CONFIG } from '../../config/contracts';
-import { createContract, getSigner, ContractServiceError } from './base';
+import {
+  Contract,
+  Signer,
+  Provider,
+  ContractTransactionResponse,
+  ContractTransactionReceipt,
+  Overrides,
+  BigNumberish,
+  Interface,
+  Log,
+  EventLog,
+} from 'ethers';
 
 /**
- * 代币信息接口
+ * 标准 ERC20 代币合约封装类 (兼容 ethers v6)
+ * 提供所有标准 ERC20 函数的类型安全调用
  */
-export interface TokenInfo {
-  /**
-   * 代币地址
-   */
-  address: string;
-  /**
-   * 代币符号
-   */
-  symbol: string;
-  /**
-   * 代币名称
-   */
-  name: string;
-  /**
-   * 代币小数位
-   */
-  decimals: number;
-  /**
-   * 代币余额
-   */
-  balance?: ethers.BigNumberish;
-  /**
-   * 格式化后的代币余额
-   */
-  balanceFormatted?: string;
-}
+export class ERC20 {
+  public readonly contract: Contract;
+  public readonly address: string;
+  public readonly signerOrProvider: Signer | Provider;
+  public readonly interface: Interface;
 
-/**
- * ERC20 代币合约类
- * 用于与 ERC20 标准代币合约交互
- */
-export class ERC20Contract {
-  private contract: ethers.Contract;
-  private address: string;
-
-  /**
-   * 构造函数
-   * @param contract 以太坊合约实例
-   * @param address 代币合约地址
-   */
-  constructor(contract: ethers.Contract, address: string) {
-    this.contract = contract;
+  constructor(address: string, signerOrProvider: Signer | Provider) {
     this.address = address;
+    this.signerOrProvider = signerOrProvider;
+    this.contract = new Contract(address, ABI, signerOrProvider);
+    this.interface = this.contract.interface;
   }
 
   /**
-   * 获取账户的代币余额
+   * 连接到新的签名者或提供者
+   */
+  public connect(addressOrSigner: string | Signer): ERC20 {
+    if (typeof addressOrSigner === 'string') {
+      return new ERC20(addressOrSigner, this.signerOrProvider);
+    } else {
+      return new ERC20(this.address, addressOrSigner);
+    }
+  }
+
+  // ------------------------------------------------------------------------
+  // 只读函数 (视图)
+  // ------------------------------------------------------------------------
+
+  /**
+   * 返回代币名称
+   */
+  public async name(): Promise<string> {
+    return (await this.contract.name()) as string;
+  }
+
+  /**
+   * 返回代币符号
+   */
+  public async symbol(): Promise<string> {
+    return (await this.contract.symbol()) as string;
+  }
+
+  /**
+   * 返回代币小数位数
+   */
+  public async decimals(): Promise<number> {
+    return Number(await this.contract.decimals());
+  }
+
+  /**
+   * 返回代币总供应量
+   */
+  public async totalSupply(): Promise<bigint> {
+    return (await this.contract.totalSupply()) as bigint;
+  }
+
+  /**
+   * 返回指定地址的代币余额
    * @param account 账户地址
-   * @returns 代币余额
-   * @throws {ContractServiceError} 当获取代币余额失败时
    */
-  async getBalance(account: string): Promise<ethers.BigNumberish> {
-    try {
-      return await this.contract.balanceOf(account);
-    } catch (error) {
-      console.error('获取代币余额失败:', error);
-      throw new ContractServiceError('获取代币余额失败', 'GET_BALANCE_FAILED');
+  public async balanceOf(account: string): Promise<bigint> {
+    return (await this.contract.balanceOf(account)) as bigint;
+  }
+
+  /**
+   * 返回 owner 授权给 spender 的额度
+   * @param owner 所有者地址
+   * @param spender 被授权地址
+   */
+  public async allowance(
+    owner: string,
+    spender: string
+  ): Promise<bigint> {
+    return (await this.contract.allowance(owner, spender)) as bigint;
+  }
+
+  // ------------------------------------------------------------------------
+  // 交易函数
+  // ------------------------------------------------------------------------
+
+  /**
+   * 转账代币到指定地址
+   * @param to 接收地址
+   * @param amount 转账数量
+   */
+  public async transfer(
+    to: string,
+    amount: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<{
+    tx: ContractTransactionResponse;
+    wait: () => Promise<ContractTransactionReceipt>;
+  }> {
+    const tx = await this.contract.transfer(to, amount, overrides || {});
+    return { tx, wait: () => tx.wait() };
+  }
+
+  /**
+   * 授权 spender 可从发送方账户转账 amount 数量的代币
+   * @param spender 被授权地址
+   * @param amount 授权数量
+   */
+  public async approve(
+    spender: string,
+    amount: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<{
+    tx: ContractTransactionResponse;
+    wait: () => Promise<ContractTransactionReceipt>;
+  }> {
+    const tx = await this.contract.approve(spender, amount, overrides || {});
+    return { tx, wait: () => tx.wait() };
+  }
+
+  /**
+   * 从 from 转账代币到 to（需要调用者拥有足够的授权）
+   * @param from 源地址
+   * @param to 目标地址
+   * @param amount 转账数量
+   */
+  public async transferFrom(
+    from: string,
+    to: string,
+    amount: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<{
+    tx: ContractTransactionResponse;
+    wait: () => Promise<ContractTransactionReceipt>;
+  }> {
+    const tx = await this.contract.transferFrom(from, to, amount, overrides || {});
+    return { tx, wait: () => tx.wait() };
+  }
+
+  // ------------------------------------------------------------------------
+  // 可选扩展 (部分 ERC20 实现包含)
+  // ------------------------------------------------------------------------
+
+  /**
+   * 增加授权额度（安全地增加 allowance，防止竞争条件）
+   * @param spender 被授权地址
+   * @param addedValue 增加的数量
+   */
+  public async increaseAllowance(
+    spender: string,
+    addedValue: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<{
+    tx: ContractTransactionResponse;
+    wait: () => Promise<ContractTransactionReceipt>;
+  }> {
+    const tx = await this.contract.increaseAllowance(spender, addedValue, overrides || {});
+    return { tx, wait: () => tx.wait() };
+  }
+
+  /**
+   * 减少授权额度
+   * @param spender 被授权地址
+   * @param subtractedValue 减少的数量
+   */
+  public async decreaseAllowance(
+    spender: string,
+    subtractedValue: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<{
+    tx: ContractTransactionResponse;
+    wait: () => Promise<ContractTransactionReceipt>;
+  }> {
+    const tx = await this.contract.decreaseAllowance(spender, subtractedValue, overrides || {});
+    return { tx, wait: () => tx.wait() };
+  }
+
+  // ------------------------------------------------------------------------
+  // 事件过滤器
+  // ------------------------------------------------------------------------
+
+  public filters = {
+    /**
+     * Transfer 事件过滤器
+     * @param from 源地址（可为 null 以匹配任意）
+     * @param to 目标地址（可为 null 以匹配任意）
+     */
+    Transfer: (from?: string | null, to?: string | null) => {
+      return this.contract.filters.Transfer(from, to);
+    },
+
+    /**
+     * Approval 事件过滤器
+     * @param owner 所有者地址（可为 null 以匹配任意）
+     * @param spender 被授权地址（可为 null 以匹配任意）
+     */
+    Approval: (owner?: string | null, spender?: string | null) => {
+      return this.contract.filters.Approval(owner, spender);
+    },
+  };
+
+  // ------------------------------------------------------------------------
+  // 辅助方法：解析事件日志
+  // ------------------------------------------------------------------------
+
+  /**
+   * 从交易收据中解析 Transfer 事件
+   * @param receipt 交易收据
+   * @param eventName 事件名称，默认为 'Transfer'
+   * @returns 解析后的事件数组
+   */
+  public parseEvents(
+    receipt: ContractTransactionReceipt,
+    eventName: 'Transfer' | 'Approval'
+  ): Array<{ from: string; to: string; value: bigint } | { owner: string; spender: string; value: bigint }> {
+    const logs = receipt.logs
+      .filter((log) => log.address.toLowerCase() === this.address.toLowerCase())
+      .map((log) => {
+        try {
+          return this.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .filter((parsed) => parsed && parsed.name === eventName);
+
+    if (eventName === 'Transfer') {
+      return logs.map((parsed) => ({
+        from: parsed!.args[0],
+        to: parsed!.args[1],
+        value: parsed!.args[2],
+      })) as any;
+    } else {
+      return logs.map((parsed) => ({
+        owner: parsed!.args[0],
+        spender: parsed!.args[1],
+        value: parsed!.args[2],
+      })) as any;
     }
-  }
-
-  /**
-   * 获取授权额度
-   * @param owner 授权方地址
-   * @param spender 被授权方地址
-   * @returns 授权额度
-   * @throws {ContractServiceError} 当获取授权额度失败时
-   */
-  async getAllowance(owner: string, spender: string): Promise<ethers.BigNumberish> {
-    try {
-      return await this.contract.allowance(owner, spender);
-    } catch (error) {
-      console.error('获取授权额度失败:', error);
-      throw new ContractServiceError('获取授权额度失败', 'GET_ALLOWANCE_FAILED');
-    }
-  }
-
-  /**
-   * 授权代币
-   * @param spender 被授权方地址
-   * @param amount 授权额度
-   * @returns 交易回执
-   * @throws {ContractServiceError} 当授权代币失败时
-   */
-  async approve(spender: string, amount: ethers.BigNumberish): Promise<ethers.TransactionReceipt> {
-    try {
-      const tx = await this.contract.approve(spender, amount);
-      return await tx.wait();
-    } catch (error) {
-      console.error('授权代币失败:', error);
-      throw new ContractServiceError('授权代币失败', 'APPROVE_FAILED');
-    }
-  }
-
-  /**
-   * 转账代币
-   * @param to 接收方地址
-   * @param amount 转账金额
-   * @returns 交易回执
-   * @throws {ContractServiceError} 当转账代币失败时
-   */
-  async transfer(to: string, amount: ethers.BigNumberish): Promise<ethers.TransactionReceipt> {
-    try {
-      const tx = await this.contract.transfer(to, amount);
-      return await tx.wait();
-    } catch (error) {
-      console.error('转账代币失败:', error);
-      throw new ContractServiceError('转账代币失败', 'TRANSFER_FAILED');
-    }
-  }
-
-  /**
-   * 代转账代币
-   * @param from 发送方地址
-   * @param to 接收方地址
-   * @param amount 转账金额
-   * @returns 交易回执
-   * @throws {ContractServiceError} 当代转账代币失败时
-   */
-  async transferFrom(from: string, to: string, amount: ethers.BigNumberish): Promise<ethers.TransactionReceipt> {
-    try {
-      const tx = await this.contract.transferFrom(from, to, amount);
-      return await tx.wait();
-    } catch (error) {
-      console.error('代转账代币失败:', error);
-      throw new ContractServiceError('代转账代币失败', 'TRANSFER_FROM_FAILED');
-    }
-  }
-
-  /**
-   * 获取代币小数位
-   * @returns 代币小数位
-   * @throws {ContractServiceError} 当获取代币小数位失败时
-   */
-  async getDecimals(): Promise<number> {
-    try {
-      return await this.contract.decimals();
-    } catch (error) {
-      console.error('获取代币小数位失败:', error);
-      throw new ContractServiceError('获取代币小数位失败', 'GET_DECIMALS_FAILED');
-    }
-  }
-
-  /**
-   * 获取代币符号
-   * @returns 代币符号
-   * @throws {ContractServiceError} 当获取代币符号失败时
-   */
-  async getSymbol(): Promise<string> {
-    try {
-      return await this.contract.symbol();
-    } catch (error) {
-      console.error('获取代币符号失败:', error);
-      throw new ContractServiceError('获取代币符号失败', 'GET_SYMBOL_FAILED');
-    }
-  }
-
-  /**
-   * 获取代币名称
-   * @returns 代币名称
-   * @throws {ContractServiceError} 当获取代币名称失败时
-   */
-  async getName(): Promise<string> {
-    try {
-      return await this.contract.name();
-    } catch (error) {
-      console.error('获取代币名称失败:', error);
-      throw new ContractServiceError('获取代币名称失败', 'GET_NAME_FAILED');
-    }
-  }
-
-  /**
-   * 获取代币合约地址
-   * @returns 代币合约地址
-   */
-  getAddress(): string {
-    return this.address;
-  }
-
-  /**
-   * 获取以太坊合约实例
-   * @returns 以太坊合约实例
-   */
-  getContract(): ethers.Contract {
-    return this.contract;
   }
 }
 
-/**
- * 获取 ERC20 代币合约实例
- * @param tokenAddress 代币合约地址
- * @returns ERC20 代币合约实例
- */
-export const getERC20Contract = async (tokenAddress: string): Promise<ERC20Contract> => {
-  const contract = await createContract(tokenAddress, CONTRACT_ABIS.ERC20);
-  return new ERC20Contract(contract, tokenAddress);
-};
+// ------------------------------------------------------------------------
+// 标准 ERC20 ABI (包含可选方法)
+// ------------------------------------------------------------------------
+const ABI = [
+  // 视图函数
+  'function name() external view returns (string)',
+  'function symbol() external view returns (string)',
+  'function decimals() external view returns (uint8)',
+  'function totalSupply() external view returns (uint256)',
+  'function balanceOf(address account) external view returns (uint256)',
+  'function allowance(address owner, address spender) external view returns (uint256)',
 
-/**
- * 根据代币符号获取 ERC20 代币合约实例
- * @param tokenSymbol 代币符号
- * @returns ERC20 代币合约实例
- * @throws {ContractServiceError} 当未找到代币地址时
- */
-export const getTokenContract = async (tokenSymbol: string): Promise<ERC20Contract> => {
-  const tokenAddress = CONTRACT_ADDRESSES.TOKENS[tokenSymbol as keyof typeof CONTRACT_ADDRESSES.TOKENS];
-  if (!tokenAddress) {
-    throw new ContractServiceError(`未找到代币 ${tokenSymbol} 的地址`, 'TOKEN_NOT_FOUND');
-  }
-  return await getERC20Contract(tokenAddress);
-};
+  // 交易函数
+  'function transfer(address to, uint256 amount) external returns (bool)',
+  'function approve(address spender, uint256 amount) external returns (bool)',
+  'function transferFrom(address from, address to, uint256 amount) external returns (bool)',
 
-/**
- * 获取代币余额
- * @param tokenSymbol 代币符号
- * @param account 账户地址
- * @returns 格式化后的代币余额
- * @throws {ContractServiceError} 当获取代币余额失败时
- */
-export const getTokenBalance = async (tokenSymbol: string, account: string): Promise<string> => {
-  try {
-    const tokenContract = await getTokenContract(tokenSymbol);
-    const balance = await tokenContract.getBalance(account);
-    const decimals = APP_CONFIG.DECIMALS[tokenSymbol as keyof typeof APP_CONFIG.DECIMALS] || 18;
-    return ethers.formatUnits(balance, decimals);
-  } catch (error) {
-    console.error('获取代币余额失败:', error);
-    throw new ContractServiceError('获取代币余额失败', 'GET_TOKEN_BALANCE_FAILED');
-  }
-};
+  // 可选扩展 (OpenZeppelin ERC20 常用)
+  'function increaseAllowance(address spender, uint256 addedValue) external returns (bool)',
+  'function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool)',
 
-/**
- * 授权代币
- * @param tokenSymbol 代币符号
- * @param spender 被授权方地址
- * @param amount 授权额度，默认使用最大值
- * @returns 交易回执
- * @throws {ContractServiceError} 当授权代币失败时
- */
-export const approveToken = async (
-  tokenSymbol: string,
-  spender: string,
-  amount?: ethers.BigNumberish
-): Promise<ethers.TransactionReceipt> => {
-  try {
-    const tokenContract = await getTokenContract(tokenSymbol);
-    const approvalAmount = amount || ethers.MaxUint256;
-    return await tokenContract.approve(spender, approvalAmount);
-  } catch (error) {
-    console.error('授权代币失败:', error);
-    throw new ContractServiceError('授权代币失败', 'APPROVE_TOKEN_FAILED');
-  }
-};
+  // 事件
+  'event Transfer(address indexed from, address indexed to, uint256 value)',
+  'event Approval(address indexed owner, address indexed spender, uint256 value)',
+];
 
-/**
- * 检查并授权代币
- * @param tokenSymbol 代币符号
- * @param spender 被授权方地址
- * @param requiredAmount 需要的授权额度
- * @returns 是否进行了授权操作
- * @throws {ContractServiceError} 当检查并授权代币失败时
- */
-export const checkAndApproveToken = async (
-  tokenSymbol: string,
-  spender: string,
-  requiredAmount: ethers.BigNumberish
-): Promise<boolean> => {
-  try {
-    const tokenContract = await getTokenContract(tokenSymbol);
-    const signer = await getSigner();
-    const owner = await signer.getAddress();
-    
-    const currentAllowance = await tokenContract.getAllowance(owner, spender);
-    const requiredAmountBN = BigInt(requiredAmount);
-    
-    if (BigInt(currentAllowance) < requiredAmountBN) {
-      await tokenContract.approve(spender, ethers.MaxUint256);
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('检查并授权代币失败:', error);
-    throw new ContractServiceError('检查并授权代币失败', 'CHECK_APPROVE_FAILED');
-  }
-};
-
-/**
- * 获取所有代币余额
- * @param account 账户地址
- * @returns 所有代币的余额映射
- * @throws {ContractServiceError} 当获取所有代币余额失败时
- */
-export const getAllTokenBalances = async (account: string): Promise<Record<string, string>> => {
-  const balances: Record<string, string> = {};
-  
-  try {
-    for (const [symbol, address] of Object.entries(CONTRACT_ADDRESSES.TOKENS)) {
-      if (symbol !== 'ETH') {
-        const tokenContract = await getERC20Contract(address);
-        const balance = await tokenContract.getBalance(account);
-        const decimals = APP_CONFIG.DECIMALS[symbol as keyof typeof APP_CONFIG.DECIMALS] || 18;
-        balances[symbol] = ethers.formatUnits(balance, decimals);
-      }
-    }
-    
-    return balances;
-  } catch (error) {
-    console.error('获取所有代币余额失败:', error);
-    throw new ContractServiceError('获取所有代币余额失败', 'GET_ALL_BALANCES_FAILED');
-  }
-};
-
-/**
- * 按代币地址检查并授权代币
- * @param tokenAddress 代币合约地址
- * @param spender 被授权方地址
- * @param requiredAmount 需要的授权额度
- * @returns 是否进行了授权操作
- * @throws {ContractServiceError} 当检查并授权代币失败时
- */
-export const checkAndApproveTokenByAddress = async (
-  tokenAddress: string,
-  spender: string,
-  requiredAmount: ethers.BigNumberish
-): Promise<boolean> => {
-  try {
-    // 先转换为小写，再使用 getAddress 进行校验和验证
-    const normalizedTokenAddress = ethers.getAddress(tokenAddress.toLowerCase());
-    const normalizedSpender = ethers.getAddress(spender.toLowerCase());
-    
-    const tokenContract = await getERC20Contract(normalizedTokenAddress);
-    const signer = await getSigner();
-    const owner = await signer.getAddress();
-    
-    try {
-      // 尝试获取授权额度
-      const currentAllowance = await tokenContract.getAllowance(owner, normalizedSpender);
-      const requiredAmountBN = BigInt(requiredAmount);
-      
-      console.log(`检查代币授权 - 地址: ${normalizedTokenAddress}`);
-      console.log(`当前授权额度: ${currentAllowance}`);
-      console.log(`需要的授权额度: ${requiredAmountBN}`);
-      
-      if (BigInt(currentAllowance) < requiredAmountBN) {
-        console.log(`授权额度不足，正在授权...`);
-        await tokenContract.approve(normalizedSpender, ethers.MaxUint256);
-        console.log(`授权成功`);
-        return true;
-      }
-      
-      console.log(`授权额度充足，无需授权`);
-      return false;
-    } catch (error) {
-      console.error('获取授权额度失败，直接尝试授权:', error);
-      // 获取授权额度失败，直接尝试授权
-      console.log(`直接尝试授权...`);
-      await tokenContract.approve(normalizedSpender, ethers.MaxUint256);
-      console.log(`授权成功`);
-      return true;
-    }
-  } catch (error) {
-    console.error('按地址检查并授权代币失败:', error);
-    throw new ContractServiceError('按地址检查并授权代币失败', 'CHECK_APPROVE_BY_ADDRESS_FAILED');
-  }
-};
+export default ERC20;

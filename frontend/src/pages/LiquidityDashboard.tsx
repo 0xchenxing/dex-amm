@@ -3,7 +3,9 @@ import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../hooks/useNotification';
 import { liquidityPoolAPI, userAPI } from '../services/apiService';
-import { executeAddLiquidity, executeRemoveLiquidity } from '../services/contracts/SwapRouter02';
+import { SwapRouter02, ERC20, getSigner } from '../services/contractService';
+import { CONTRACT_ADDRESSES } from '../config/contracts';
+import { parseUnits } from 'ethers';
 import type { LiquidityPool } from '../types';
 import './LiquidityDashboard.css';
 
@@ -32,7 +34,7 @@ export function LiquidityDashboard() {
   const loadData = async () => {
     try {
       const allPools = await liquidityPoolAPI.getAll();
-      console.log('Debug - loadData:', allPools);
+      // console.log('Debug - loadData:', allPools);
       setPools(allPools);
       if (allPools.length > 0 && !selectedPool) {
         setSelectedPool(allPools[0].id);
@@ -47,6 +49,7 @@ export function LiquidityDashboard() {
     if (!user || !selectedPool) return;
 
     const pool = pools.find(p => p.id === selectedPool);
+    // console.log('Debug - addLiquidity pool:', pool);
     if (!pool) return;
 
     const amount1 = parseFloat(addAmount1);
@@ -59,24 +62,64 @@ export function LiquidityDashboard() {
 
     setIsLoading(true);
     try {
-      console.log('Debug - addLiquidity:');
-      console.log('pool:', pool);
-      console.log('pool.token1:', pool.token1);
-      console.log('pool.token2:', pool.token2);
-      console.log('pool.token1Address:', pool.token1Address);
-      console.log('pool.token2Address:', pool.token2Address);
-      console.log('amount1:', amount1);
-      console.log('amount2:', amount2);
+      const signer = await getSigner();
+      const userAddress = await signer.getAddress();
       
-      // Use token addresses from database
-      console.log('Using token addresses from database:');
-      console.log('token1Address:', pool.token1Address);
-      console.log('token2Address:', pool.token2Address);
+      const routerAddress = CONTRACT_ADDRESSES.DEXAMM_ROUTER02;
+      const router = new SwapRouter02(routerAddress, signer);
       
-      const result = await executeAddLiquidity('dexamm', pool.token1Address, pool.token2Address, amount1, amount2);
-      await liquidityPoolAPI.addLiquidity(selectedPool, amount1, amount2, result.txHash);
+      const token1Contract = new ERC20(pool.token1Address, signer);
+      const token2Contract = new ERC20(pool.token2Address, signer);
+      
+      const decimals1 = await token1Contract.decimals();
+      console.log(decimals1)
+      const decimals2 = await token2Contract.decimals();
+      console.log(decimals2)
+      
+      const amount1Wei = parseUnits(amount1.toString(), decimals1);
+      const amount2Wei = parseUnits(amount2.toString(), decimals2);
+      
+      const allowance1 = await token1Contract.allowance(userAddress, routerAddress);
+      const allowance2 = await token2Contract.allowance(userAddress, routerAddress);
+      
+      if (allowance1 < amount1Wei) {
+        showNotification('正在授权 ' + pool.token1 + '...', 'info');
+        const approve1Result = await token1Contract.approve(routerAddress, amount1Wei);
+        await approve1Result.wait();
+        showNotification(pool.token1 + ' 授权成功', 'success');
+      }
+      
+      if (allowance2 < amount2Wei) {
+        showNotification('正在授权 ' + pool.token2 + '...', 'info');
+        const approve2Result = await token2Contract.approve(routerAddress, amount2Wei);
+        await approve2Result.wait();
+        showNotification(pool.token2 + ' 授权成功', 'success');
+      }
+      
+      showNotification('正在添加流动性...', 'info');
+      
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+      const slippageTolerance = 0.5;
+      const amount1Min = amount1Wei * BigInt(Math.floor((1 - slippageTolerance / 100) * 1000)) / BigInt(1000);
+      const amount2Min = amount2Wei * BigInt(Math.floor((1 - slippageTolerance / 100) * 1000)) / BigInt(1000);
+      
+      const tx = await router.addLiquidity(
+        pool.token1Address,
+        pool.token2Address,
+        amount1Wei,
+        amount2Wei,
+        amount1Min,
+        amount2Min,
+        userAddress,
+        deadline
+      );
+      
+      const receipt = await tx.wait();
+      const txHash = receipt!.hash;
+      
+      await liquidityPoolAPI.addLiquidity(selectedPool, amount1, amount2, txHash);
 
-      showNotification(`流动性添加成功，交易哈希: ${result.txHash.substring(0, 10)}...`, 'success');
+      showNotification(`流动性添加成功，交易哈希: ${txHash.substring(0, 10)}...`, 'success');
       
       setAddAmount1('');
       setAddAmount2('');
@@ -103,14 +146,35 @@ export function LiquidityDashboard() {
 
     setIsLoading(true);
     try {
-      // Use token addresses from database
-      console.log('Using token addresses from database for remove:');
-      console.log('token1Address:', pool.token1Address);
-      console.log('token2Address:', pool.token2Address);
+      const signer = await getSigner();
+      const userAddress = await signer.getAddress();
       
-      const result = await executeRemoveLiquidity('dexamm', pool.token1Address, pool.token2Address, amount);
-      await liquidityPoolAPI.removeLiquidity(selectedPool, amount, result.txHash);
-      showNotification(`流动性移除成功，交易哈希: ${result.txHash.substring(0, 10)}...`, 'success');
+      const routerAddress = CONTRACT_ADDRESSES.DEXAMM_ROUTER02;
+      const router = new SwapRouter02(routerAddress, signer);
+      
+      const liquidityWei = parseUnits(amount.toString(), 18);
+      
+      showNotification('正在移除流动性...', 'info');
+      
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+      const amount1Min = BigInt(0);
+      const amount2Min = BigInt(0);
+      
+      const result = await router.removeLiquidity(
+        pool.token1Address,
+        pool.token2Address,
+        liquidityWei,
+        amount1Min,
+        amount2Min,
+        userAddress,
+        deadline
+      );
+      
+      const receipt = await result.wait();
+      const txHash = receipt!.hash;
+      
+      await liquidityPoolAPI.removeLiquidity(selectedPool, amount, txHash);
+      showNotification(`流动性移除成功，交易哈希: ${txHash.substring(0, 10)}...`, 'success');
       setRemoveAmount('');
       loadData();
     } catch (error) {

@@ -1,17 +1,22 @@
-// 基础合约服务已迁移到 services/contracts 目录
-// 此文件保留以确保向后兼容
-import * as contractService from './contracts/base';
-import * as erc20Service from './contracts/erc20';
+import { BrowserProvider, Signer } from 'ethers';
+import * as erc20Service from './contracts/ERC20';
 import * as routerService from './contracts/SwapRouter02';
 import * as factoryService from './contracts/SwapFactory';
 
-export * from './contracts/base';
-export * from './contracts/erc20';
+export * from './contracts/ERC20';
 export * from './contracts/SwapRouter02';
 export * from './contracts/SwapFactory';
 
+export async function getSigner(): Promise<Signer> {
+  if (!window.ethereum) {
+    throw new Error('请安装 MetaMask 钱包');
+  }
+  const provider = new BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+  return signer;
+}
+
 export default {
-  ...contractService,
   ...erc20Service,
   ...routerService,
   ...factoryService

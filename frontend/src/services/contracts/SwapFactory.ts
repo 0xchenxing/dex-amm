@@ -5,7 +5,6 @@ import {
   ContractTransactionResponse,
   ContractTransactionReceipt,
   Overrides,
-  CallOverrides,
   BigNumberish,
 } from 'ethers';
 
@@ -39,30 +38,30 @@ export class SwapFactory {
   // 只读状态变量
   // ------------------------------------------------------------------------
 
-  public async feeTo(overrides?: CallOverrides): Promise<string> {
+  public async feeTo(overrides?: Overrides): Promise<string> {
     return (await this.contract.feeTo(overrides)) as string;
   }
 
-  public async feeToSetter(overrides?: CallOverrides): Promise<string> {
+  public async feeToSetter(overrides?: Overrides): Promise<string> {
     return (await this.contract.feeToSetter(overrides)) as string;
   }
 
   public async getPair(
     tokenA: string,
     tokenB: string,
-    overrides?: CallOverrides
+    overrides?: Overrides
   ): Promise<string> {
     return (await this.contract.getPair(tokenA, tokenB, overrides)) as string;
   }
 
   public async allPairs(
     index: BigNumberish,
-    overrides?: CallOverrides
+    overrides?: Overrides
   ): Promise<string> {
     return (await this.contract.allPairs(index, overrides)) as string;
   }
 
-  public async allPairsLength(overrides?: CallOverrides): Promise<bigint> {
+  public async allPairsLength(overrides?: Overrides): Promise<bigint> {
     return (await this.contract.allPairsLength(overrides)) as bigint;
   }
 

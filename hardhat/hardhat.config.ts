@@ -5,6 +5,9 @@ import "@nomicfoundation/hardhat-verify";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 const config: HardhatUserConfig = { 
   solidity: {
@@ -32,7 +35,19 @@ const config: HardhatUserConfig = {
     }
   },
   etherscan: {
-    apiKey: "FY4PTYA9FEUVZJTSWCEQ17XAKA7ZI1MJHK"
+    apiKey: {
+      sepolia: process.env.API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api-sepolia.etherscan.io/api",
+          browserURL: "https://sepolia.etherscan.io"
+        }
+      }
+    ]
   },
   gasReporter: {
     enabled: true,
