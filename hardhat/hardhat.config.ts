@@ -35,19 +35,8 @@ const config: HardhatUserConfig = {
     }
   },
   etherscan: {
-    apiKey: {
-      sepolia: process.env.API_KEY || "",
-    },
-    customChains: [
-      {
-        network: "sepolia",
-        chainId: 11155111,
-        urls: {
-          apiURL: "https://api-sepolia.etherscan.io/api",
-          browserURL: "https://sepolia.etherscan.io"
-        }
-      }
-    ]
+    // Etherscan V2 requires a single API key.
+    apiKey: process.env.API_KEY || "",
   },
   gasReporter: {
     enabled: true,
