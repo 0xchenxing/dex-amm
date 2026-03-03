@@ -64,6 +64,7 @@ export function LiquidityDashboard() {
     try {
       const signer = await getSigner();
       const userAddress = await signer.getAddress();
+      console.log(userAddress)
       
       const routerAddress = CONTRACT_ADDRESSES.DEXAMM_ROUTER02;
       const router = new SwapRouter02(routerAddress, signer);
@@ -72,16 +73,18 @@ export function LiquidityDashboard() {
       const token2Contract = new ERC20(pool.token2Address, signer);
       
       const decimals1 = await token1Contract.decimals();
-      console.log(decimals1)
+      // console.log(decimals1)
       const decimals2 = await token2Contract.decimals();
-      console.log(decimals2)
+      // console.log(decimals2)
       
       const amount1Wei = parseUnits(amount1.toString(), decimals1);
+      console.log(amount1Wei)
       const amount2Wei = parseUnits(amount2.toString(), decimals2);
-      
+      console.log(amount2Wei)
       const allowance1 = await token1Contract.allowance(userAddress, routerAddress);
+      console.log(allowance1)
       const allowance2 = await token2Contract.allowance(userAddress, routerAddress);
-      
+      console.log(allowance2)
       if (allowance1 < amount1Wei) {
         showNotification('正在授权 ' + pool.token1 + '...', 'info');
         const approve1Result = await token1Contract.approve(routerAddress, amount1Wei);

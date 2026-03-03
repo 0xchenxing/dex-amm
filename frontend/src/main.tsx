@@ -11,7 +11,7 @@ import App from './App.tsx'
 const config = createConfig({
   chains: [mainnet, polygon, optimism, arbitrum, sepolia],
   transports: {
-    [mainnet.id]: http('https://eth.llamarpc.com'),
+    [mainnet.id]: http('https://cloudflare-eth.com'),
     [polygon.id]: http('https://polygon.llamarpc.com'),
     [optimism.id]: http('https://optimism.llamarpc.com'),
     [arbitrum.id]: http('https://arbitrum.llamarpc.com'),
