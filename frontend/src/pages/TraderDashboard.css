@@ -190,6 +190,10 @@
   background-clip: text;
 }
 
+.negative {
+  color: #ff6b6b;
+}
+
 .stat-label {
   font-size: 13px;
   color: var(--text-muted);
@@ -392,5 +396,13 @@ tbody tr:hover {
   .balance-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+.tx-link {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+.tx-link:hover {
+  text-decoration: underline;
 }
 
