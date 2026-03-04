@@ -35,9 +35,6 @@ export interface LiquidityPool {
   token2: string;
   token1Address: string;
   token2Address: string;
-  totalLiquidity: number;
-  volume24h: number;
-  apy: number;
   reserve1: number;
   reserve2: number;
   totalSupply: number;

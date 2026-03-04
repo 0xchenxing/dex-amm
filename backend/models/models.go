@@ -85,9 +85,6 @@ type LiquidityPool struct {
 	Token2         string  `json:"token2"`
 	Token1Address  string  `json:"token1Address"`
 	Token2Address  string  `json:"token2Address"`
-	TotalLiquidity float64 `json:"totalLiquidity"`
-	Volume24h      float64 `json:"volume24h"`
-	APY            float64 `json:"apy"`
 	Reserve1       float64 `json:"reserve1"`
 	Reserve2       float64 `json:"reserve2"`
 	TotalSupply    float64 `json:"totalSupply"`

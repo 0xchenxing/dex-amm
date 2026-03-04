@@ -71,9 +71,6 @@ func createTables(db *sql.DB) error {
 		token2 VARCHAR(50) NOT NULL,
 		token1_address VARCHAR(255) NOT NULL,
 		token2_address VARCHAR(255) NOT NULL,
-		total_liquidity DECIMAL(30, 10) NOT NULL,
-		volume24h DECIMAL(30, 10) NOT NULL,
-		apy DECIMAL(10, 2) NOT NULL,
 		reserve1 DECIMAL(30, 10) NOT NULL,
 		reserve2 DECIMAL(30, 10) NOT NULL,
 		total_supply DECIMAL(30, 10) NOT NULL,
@@ -250,28 +247,25 @@ func initializeDemoData(db *sql.DB) error {
 
 	// Insert demo liquidity pools
 	liquidityPools := []struct {
-		id             string
-		pair           string
-		token1         string
-		token2         string
-		token1Address  string
-		token2Address  string
-		totalLiquidity float64
-		volume24h      float64
-		apy            float64
-		reserve1       float64
-		reserve2       float64
-		totalSupply    float64
+		id            string
+		pair          string
+		token1        string
+		token2        string
+		token1Address string
+		token2Address string
+		reserve1      float64
+		reserve2      float64
+		totalSupply   float64
 	}{
-		{"ETH-USDT", "ETH/USDT", "ETH", "USDT", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 1250000, 850000, 15.2, 500, 1225000, 25000},
-		{"WBTC-USDT", "WBTC/USDT", "WBTC", "USDT", "0x8fC3B11b0dF4cD368850cf2d875A4164612A270f", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 2100000, 1200000, 18.5, 48.5, 2097500, 32000},
-		{"DAI-USDT", "DAI/USDT", "DAI", "USDT", "0x83F20F44975D03b1b09e64809B757c47f942BEeA", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 800000, 320000, 8.3, 400000, 400000, 20000},
+		{"ETH-USDT", "ETH/USDT", "ETH", "USDT", "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 500, 1225000, 25000},
+		{"WBTC-USDT", "WBTC/USDT", "WBTC", "USDT", "0x8fC3B11b0dF4cD368850cf2d875A4164612A270f", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 48.5, 2097500, 32000},
+		{"DAI-USDT", "DAI/USDT", "DAI", "USDT", "0x83F20F44975D03b1b09e64809B757c47f942BEeA", "0x7b7087A1B1a7950D163401F4D2D13898a9f99711", 400000, 400000, 20000},
 	}
 
 	for _, pool := range liquidityPools {
 		_, err := db.Exec(
-			"INSERT INTO liquidity_pools (id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			pool.id, pool.pair, pool.token1, pool.token2, pool.token1Address, pool.token2Address, pool.totalLiquidity, pool.volume24h, pool.apy, pool.reserve1, pool.reserve2, pool.totalSupply, "active",
+			"INSERT INTO liquidity_pools (id, pair, token1, token2, token1_address, token2_address, reserve1, reserve2, total_supply, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			pool.id, pool.pair, pool.token1, pool.token2, pool.token1Address, pool.token2Address, pool.reserve1, pool.reserve2, pool.totalSupply, "active",
 		)
 		if err != nil {
 			return fmt.Errorf("error inserting demo liquidity pool %s: %v", pool.id, err)
@@ -431,7 +425,7 @@ func (db *DB) GetUserByID(userID int) (*User, bool) {
 // GetAllLiquidityPools gets all liquidity pools
 func (db *DB) GetAllLiquidityPools() ([]LiquidityPool, error) {
 	rows, err := db.db.Query(`
-		SELECT id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status
+		SELECT id, pair, token1, token2, token1_address, token2_address, reserve1, reserve2, total_supply, status
 		FROM liquidity_pools
 	`)
 	if err != nil {
@@ -443,7 +437,7 @@ func (db *DB) GetAllLiquidityPools() ([]LiquidityPool, error) {
 	for rows.Next() {
 		var pool LiquidityPool
 		if err := rows.Scan(
-			&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.Token1Address, &pool.Token2Address, &pool.TotalLiquidity, &pool.Volume24h, &pool.APY, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
+			&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.Token1Address, &pool.Token2Address, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
 		); err != nil {
 			continue
 		}
@@ -457,11 +451,11 @@ func (db *DB) GetAllLiquidityPools() ([]LiquidityPool, error) {
 func (db *DB) GetLiquidityPoolByID(id string) (*LiquidityPool, error) {
 	var pool LiquidityPool
 	err := db.db.QueryRow(`
-		SELECT id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status
+		SELECT id, pair, token1, token2, token1_address, token2_address, reserve1, reserve2, total_supply, status
 		FROM liquidity_pools
 		WHERE id = ?
 	`, id).Scan(
-		&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.Token1Address, &pool.Token2Address, &pool.TotalLiquidity, &pool.Volume24h, &pool.APY, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
+		&pool.ID, &pool.Pair, &pool.Token1, &pool.Token2, &pool.Token1Address, &pool.Token2Address, &pool.Reserve1, &pool.Reserve2, &pool.TotalSupply, &pool.Status,
 	)
 	if err != nil {
 		return nil, err
@@ -473,9 +467,9 @@ func (db *DB) GetLiquidityPoolByID(id string) (*LiquidityPool, error) {
 // CreateLiquidityPool creates a new liquidity pool
 func (db *DB) CreateLiquidityPool(pool LiquidityPool) error {
 	_, err := db.db.Exec(`
-		INSERT INTO liquidity_pools (id, pair, token1, token2, token1_address, token2_address, total_liquidity, volume24h, apy, reserve1, reserve2, total_supply, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, pool.ID, pool.Pair, pool.Token1, pool.Token2, pool.Token1Address, pool.Token2Address, pool.TotalLiquidity, pool.Volume24h, pool.APY, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status)
+		INSERT INTO liquidity_pools (id, pair, token1, token2, token1_address, token2_address, reserve1, reserve2, total_supply, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, pool.ID, pool.Pair, pool.Token1, pool.Token2, pool.Token1Address, pool.Token2Address, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status)
 	return err
 }
 
@@ -483,9 +477,9 @@ func (db *DB) CreateLiquidityPool(pool LiquidityPool) error {
 func (db *DB) UpdateLiquidityPool(pool LiquidityPool) error {
 	_, err := db.db.Exec(`
 		UPDATE liquidity_pools
-		SET pair = ?, token1 = ?, token2 = ?, token1_address = ?, token2_address = ?, total_liquidity = ?, volume24h = ?, apy = ?, reserve1 = ?, reserve2 = ?, total_supply = ?, status = ?
+		SET pair = ?, token1 = ?, token2 = ?, token1_address = ?, token2_address = ?, reserve1 = ?, reserve2 = ?, total_supply = ?, status = ?
 		WHERE id = ?
-	`, pool.Pair, pool.Token1, pool.Token2, pool.Token1Address, pool.Token2Address, pool.TotalLiquidity, pool.Volume24h, pool.APY, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status, pool.ID)
+	`, pool.Pair, pool.Token1, pool.Token2, pool.Token1Address, pool.Token2Address, pool.Reserve1, pool.Reserve2, pool.TotalSupply, pool.Status, pool.ID)
 	return err
 }
 

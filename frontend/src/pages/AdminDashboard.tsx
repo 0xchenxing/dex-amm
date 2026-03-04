@@ -178,9 +178,6 @@ export function AdminDashboard() {
         token2: newPool.token2,
         token1Address: newPool.token1Address,
         token2Address: newPool.token2Address,
-        totalLiquidity: 0,
-        volume24h: 0,
-        apy: 0,
         reserve1: 0,
         reserve2: 0,
         totalSupply: 0,
@@ -444,16 +441,16 @@ export function AdminDashboard() {
                     <span>{formatAddress(pool.token2Address) || '-'}</span>
                   </div>
                   <div className="admin-stat">
-                    <span>总流动性</span>
-                    <span>${pool.totalLiquidity.toLocaleString()}</span>
+                    <span>储备1</span>
+                    <span>{pool.reserve1.toLocaleString()}</span>
                   </div>
                   <div className="admin-stat">
-                    <span>24h交易量</span>
-                    <span>${pool.volume24h.toLocaleString()}</span>
+                    <span>储备2</span>
+                    <span>{pool.reserve2.toLocaleString()}</span>
                   </div>
                   <div className="admin-stat">
-                    <span>年化收益率</span>
-                    <span>{pool.apy.toFixed(2)}%</span>
+                    <span>总供应</span>
+                    <span>{pool.totalSupply.toLocaleString()}</span>
                   </div>
                   <div className="admin-stat">
                     <span>状态</span>

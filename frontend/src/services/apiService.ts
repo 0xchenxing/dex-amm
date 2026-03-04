@@ -180,18 +180,6 @@ export const liquidityPoolAPI = {
       method: 'DELETE',
     });
   },
-  addLiquidity: async (poolId: string, amount1: number, amount2: number, txHash: string): Promise<void> => {
-    return fetchAPI(`/liquidity-pools/${poolId}/add`, {
-      method: 'POST',
-      body: JSON.stringify({ amount1, amount2, txHash }),
-    });
-  },
-  removeLiquidity: async (poolId: string, amount: number, txHash: string): Promise<void> => {
-    return fetchAPI(`/liquidity-pools/${poolId}/remove`, {
-      method: 'POST',
-      body: JSON.stringify({ amount, txHash }),
-    });
-  },
 };
 
 // IndexedDB setup
