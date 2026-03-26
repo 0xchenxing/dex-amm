@@ -91,22 +91,6 @@ type LiquidityPool struct {
 	Status         string  `json:"status"`
 }
 
-// Trade represents a trade
-
-type Trade struct {
-	ID           string    `json:"id"`
-	UserID       int       `json:"userId"`
-	UserUsername string    `json:"userUsername"`
-	Pair         string    `json:"pair"`
-	Type         string    `json:"type"`
-	Amount       float64   `json:"amount"`
-	Price        float64   `json:"price"`
-	Total        float64   `json:"total"`
-	Fee          float64   `json:"fee"`
-	Timestamp    time.Time `json:"timestamp"`
-	Status       string    `json:"status"`
-}
-
 // SystemLog represents a system log
 
 type SystemLog struct {

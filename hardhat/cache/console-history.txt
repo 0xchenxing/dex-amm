@@ -1,0 +1,13 @@
+governor.address;
+// 3. 看地址
+await governor.deployed();
+const governor = await Governor.deploy(votingDelay, votingPeriod, quorum, minDelay);
+// 2. 部署
+const Governor = await ethers.getContractFactory("SimpleGovernor");
+// 1. 获取合约工厂
+const minDelay = 5 * 60;    // queue 后至少等待 5 分钟
+const quorum = 3;           // 至少 3 票赞成
+const votingPeriod = 120;   // 投票持续 120 块
+const votingDelay = 1;      // 提案后 1 个块开始投票
+// 构造参数：按你现在 e2e 测试用的参数
+const [deployer] = await ethers.getSigners();

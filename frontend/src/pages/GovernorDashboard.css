@@ -68,10 +68,35 @@
   border: 1px solid rgba(250, 112, 154, 0.3);
 }
 
-.proposal-status.passed {
+.proposal-status.passed,
+.proposal-status.succeeded,
+.proposal-status.executed {
   background: rgba(79, 172, 254, 0.2);
   color: #00f2fe;
   border: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.proposal-status.queued {
+  background: rgba(254, 225, 64, 0.2);
+  color: #fee140;
+  border: 1px solid rgba(254, 225, 64, 0.35);
+}
+
+.proposal-status.defeated,
+.proposal-status.expired {
+  background: rgba(250, 112, 154, 0.2);
+  color: #fa709a;
+  border: 1px solid rgba(250, 112, 154, 0.3);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: #fff;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #fff;
 }
 
 .proposal-description {

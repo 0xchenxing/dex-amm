@@ -11,6 +11,9 @@ export const CONTRACT_ADDRESSES = {
   
   // DEX-AMM Factory 合约 (Sepolia 网络)
   DEXAMM_FACTORY: '0x8AE4701Bb8f334fa6128b32b32d895DE2B45C792',
+
+  // 治理合约（部署后填入 SimpleGovernor 地址）
+  DEXAMM_GOVERNOR: '0x08d2a869aD8Ba37C55Df9F98436B90d7d1eCA384',
 };
 
 // 合约 ABIs

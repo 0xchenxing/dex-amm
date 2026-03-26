@@ -1,9 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Layout } from '../components/Layout';
 import { useNotification } from '../hooks/useNotification';
-import { liquidityPoolAPI, tradingPairAPI, tradeAPI, systemLogAPI, userAPI } from '../services/apiService';
+import { liquidityPoolAPI, systemLogAPI, userAPI } from '../services/apiService';
+import { CONTRACT_ADDRESSES } from '../config/contracts';
+import { Contract, BrowserProvider, JsonRpcProvider, formatUnits } from 'ethers';
 import type { SystemLog, LiquidityPool, User } from '../types/index';
 import './AdminDashboard.css';
+
+/** 链上交易记录 */
+interface ChainTrade {
+  txHash: string;
+  timestamp: number;
+  user: string;  // to 地址：实际执行 swap 的用户钱包
+  pairLabel: string;
+  type: 'buy' | 'sell';
+  amount: number;
+  price: number;
+  total: number;
+  tokenIn: string;
+  tokenOut: string;
+}
 
 const navItems: Array<{ key: string; label: string; icon: string }> = [
   { key: 'overview', label: '系统概览', icon: '📊' },
@@ -19,7 +35,7 @@ export function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<SystemLog[]>([]);
-  const [trades, setTrades] = useState<any[]>([]);
+  const [trades, setTrades] = useState<ChainTrade[]>([]);
   const [searchUser, setSearchUser] = useState('');
   const [pools, setPools] = useState<LiquidityPool[]>([]);
   const [newPool, setNewPool] = useState({
@@ -80,20 +96,133 @@ export function AdminDashboard() {
     }
   };
 
-  const loadTradesData = async () => {
+  const loadTradesData = useCallback(async () => {
     if (loading.trades) return;
-    
+
     setLoading(prev => ({ ...prev, trades: true }));
     try {
-      const trades = await tradeAPI.getAll();
-      setTrades(Array.isArray(trades) ? trades : []);
+      let provider;
+      if (typeof window !== 'undefined' && window.ethereum) {
+        provider = new BrowserProvider(window.ethereum);
+      } else {
+        provider = new JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com');
+      }
+      const factory = new Contract(CONTRACT_ADDRESSES.DEXAMM_FACTORY, [
+        'function allPairs(uint256) external view returns (address)',
+        'function allPairsLength() external view returns (uint256)',
+      ], provider);
+
+      const swapAbi = [
+        'function token0() external view returns (address)',
+        'function token1() external view returns (address)',
+        'event Swap(address indexed sender, uint amount0In, uint amount1In, uint amount0Out, uint amount1Out, address indexed to)',
+      ];
+
+      const erc20Abi = [
+        'function symbol() external view returns (string)',
+        'function decimals() external view returns (uint8)',
+      ];
+
+      const pairCount = Number(await factory.allPairsLength());
+      const allTrades: ChainTrade[] = [];
+
+      for (let i = 0; i < pairCount; i++) {
+        try {
+          const pairAddress = await factory.allPairs(i);
+          const pairContract = new Contract(pairAddress, swapAbi, provider);
+          const [token0Addr, token1Addr] = await Promise.all([
+            pairContract.token0(),
+            pairContract.token1(),
+          ]);
+
+          const token0Contract = new Contract(token0Addr, erc20Abi, provider);
+          const token1Contract = new Contract(token1Addr, erc20Abi, provider);
+          const [symbol0, symbol1, decimals0, decimals1] = await Promise.all([
+            token0Contract.symbol().catch(() => 'T0'),
+            token1Contract.symbol().catch(() => 'T1'),
+            token0Contract.decimals().catch(() => 18),
+            token1Contract.decimals().catch(() => 18),
+          ]);
+
+          const pairLabel = `${symbol0}/${symbol1}`;
+
+          const swapLogs = await pairContract.queryFilter(
+            pairContract.filters.Swap()
+          );
+
+          for (const log of swapLogs) {
+            try {
+              const parsed = pairContract.interface.parseLog(log);
+              if (!parsed || parsed.name !== 'Swap') continue;
+
+              const amount0In = parsed.args[1] as bigint;
+              const amount1In = parsed.args[2] as bigint;
+              const amount0Out = parsed.args[3] as bigint;
+              const amount1Out = parsed.args[4] as bigint;
+              const to = parsed.args[5] as string;  // 接收方 = 实际执行 swap 的用户钱包（sender 是 Router）
+
+              const block = await provider.getBlock(log.blockNumber);
+              const timestamp = block?.timestamp ?? 0;
+
+              if (amount0In > 0n && amount1Out > 0n) {
+                const amount0InHuman = Number(formatUnits(amount0In, decimals0));
+                const amount1OutHuman = Number(formatUnits(amount1Out, decimals1));
+                const amount = amount1OutHuman;
+                const total = amount0InHuman;
+                const price = amount > 0 ? total / amount : 0;
+                allTrades.push({
+                  txHash: log.transactionHash,
+                  timestamp,
+                  user: to,
+                  pairLabel,
+                  type: 'buy',
+                  amount,
+                  price,
+                  total,
+                  tokenIn: symbol0,
+                  tokenOut: symbol1,
+                });
+              } else if (amount1In > 0n && amount0Out > 0n) {
+                const amount1InHuman = Number(formatUnits(amount1In, decimals1));
+                const amount0OutHuman = Number(formatUnits(amount0Out, decimals0));
+                const amount = amount0OutHuman;
+                const total = amount1InHuman;
+                const price = amount > 0 ? total / amount : 0;
+                allTrades.push({
+                  txHash: log.transactionHash,
+                  timestamp,
+                  user: to,
+                  pairLabel,
+                  type: 'sell',
+                  amount,
+                  price,
+                  total,
+                  tokenIn: symbol1,
+                  tokenOut: symbol0,
+                });
+              }
+            } catch {
+              // skip unparsable
+            }
+          }
+        } catch (e) {
+          console.warn('获取池子交易失败:', i, e);
+        }
+      }
+
+      allTrades.sort((a, b) => b.timestamp - a.timestamp);
+      setTrades(allTrades);
     } catch (error) {
-      console.error('加载交易数据失败:', error);
-      showNotification('加载交易数据失败', 'error');
+      console.error('加载链上交易失败:', error);
+      const msg = error instanceof Error && error.message.includes('fetch')
+        ? '加载链上交易失败，请连接 MetaMask 并切换到 Sepolia 网络'
+        : `加载链上交易失败: ${error instanceof Error ? error.message : '未知错误'}`;
+      showNotification(msg, 'error');
+      setTrades([]);
     } finally {
       setLoading(prev => ({ ...prev, trades: false }));
     }
-  };
+  }, [showNotification]);
 
   const loadLiquidityPoolsData = async () => {
     if (loading.liquidity) return;
@@ -145,7 +274,7 @@ export function AdminDashboard() {
       default:
         break;
     }
-  }, [activeSection]);
+  }, [activeSection, loadTradesData]);
 
   const toggleUserStatus = async (userId: number) => {
     try {
@@ -319,6 +448,16 @@ export function AdminDashboard() {
     return (
       <>
         <h2 className="section-title">交易监控</h2>
+        <div className="trades-header">
+          <span className="trades-hint">数据直接从链上读取（Sepolia 网络，请连接钱包）</span>
+          <button
+            className="btn btn-primary"
+            onClick={loadTradesData}
+            disabled={loading.trades}
+          >
+            {loading.trades ? '加载中...' : '刷新'}
+          </button>
+        </div>
         <div className="table-container">
           <table>
             <thead>
@@ -333,21 +472,29 @@ export function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {trades.map(trade => (
-                <tr key={trade.id}>
-                  <td>{new Date(trade.timestamp).toLocaleString()}</td>
-                  <td>{trade.userUsername || trade.user}</td>
-                  <td>{trade.pair}</td>
-                  <td className={trade.type === 'buy' ? 'type-buy' : 'type-sell'}>
-                    {trade.type === 'buy' ? '买入' : '卖出'}
-                  </td>
-                  <td>{trade.amount}</td>
-                  <td>${trade.price.toFixed(2)}</td>
-                  <td className={`status-${trade.status}`}>
-                    {trade.status === 'completed' ? '已完成' : trade.status === 'pending' ? '待处理' : '已取消'}
-                  </td>
+              {loading.trades && trades.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="loading-cell">正在从链上加载交易数据...</td>
                 </tr>
-              ))}
+              ) : trades.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="empty-cell">暂无链上交易记录</td>
+                </tr>
+              ) : (
+                trades.map((trade, idx) => (
+                  <tr key={`${trade.txHash}-${idx}`}>
+                    <td>{new Date(trade.timestamp * 1000).toLocaleString()}</td>
+                    <td title={trade.user}>{formatAddress(trade.user)}</td>
+                    <td>{trade.pairLabel}</td>
+                    <td className={trade.type === 'buy' ? 'type-buy' : 'type-sell'}>
+                      {trade.type === 'buy' ? '买入' : '卖出'}
+                    </td>
+                    <td>{trade.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
+                    <td>${trade.price.toFixed(4)}</td>
+                    <td className="status-completed">已完成</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

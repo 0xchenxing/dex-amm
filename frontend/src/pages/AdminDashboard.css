@@ -55,6 +55,27 @@
   border-left: 4px solid #fa709a;
 }
 
+.trades-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.trades-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.loading-cell,
+.empty-cell {
+  text-align: center;
+  padding: var(--spacing-xl) !important;
+  color: var(--text-muted);
+}
+
 .search-bar {
   margin-bottom: var(--spacing-lg);
 }

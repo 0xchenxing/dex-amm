@@ -84,35 +84,6 @@ func createTables(db *sql.DB) error {
 		return fmt.Errorf("error creating liquidity_pools table: %v", err)
 	}
 
-	// Create trades table
-	// Drop existing table first to ensure correct structure
-	_, err = db.Exec("DROP TABLE IF EXISTS trades")
-	if err != nil {
-		return fmt.Errorf("error dropping trades table: %v", err)
-	}
-
-	tradesTable := `
-	CREATE TABLE trades (
-		id VARCHAR(50) PRIMARY KEY,
-		user_id INTEGER NOT NULL,
-		user_username VARCHAR(50) NOT NULL,
-		pair VARCHAR(50) NOT NULL,
-		type VARCHAR(10) NOT NULL CHECK (type IN ('buy', 'sell')),
-		amount DECIMAL(30, 18) NOT NULL,
-		price DECIMAL(30, 18) NOT NULL,
-		total DECIMAL(30, 18) NOT NULL,
-		fee DECIMAL(30, 18) NOT NULL,
-		timestamp DATETIME NOT NULL,
-		status VARCHAR(10) NOT NULL CHECK (status IN ('completed', 'pending', 'cancelled')),
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-	);
-	`
-	_, err = db.Exec(tradesTable)
-	if err != nil {
-		return fmt.Errorf("error creating trades table: %v", err)
-	}
-
 	// Create governance_proposals table
 	governanceProposalsTable := `
 	CREATE TABLE IF NOT EXISTS governance_proposals (
@@ -269,34 +240,6 @@ func initializeDemoData(db *sql.DB) error {
 		)
 		if err != nil {
 			return fmt.Errorf("error inserting demo liquidity pool %s: %v", pool.id, err)
-		}
-	}
-
-	// Insert demo trades
-	trades := []struct {
-		id        string
-		username  string
-		pair      string
-		tradeType string
-		amount    float64
-		price     float64
-		total     float64
-		fee       float64
-		timestamp time.Time
-		status    string
-	}{
-		{"trade1", "trader", "ETH-USDT", "buy", 2.5, 2445.30, 6113.25, 18.34, time.Now().Add(-time.Hour), "completed"},
-		{"trade2", "trader", "WBTC-USDT", "sell", 0.1, 43180.00, 4318.00, 12.95, time.Now().Add(-2 * time.Hour), "completed"},
-	}
-
-	for _, trade := range trades {
-		userID := userIDs[trade.username]
-		_, err := db.Exec(
-			"INSERT INTO trades (id, user_id, user_username, pair, type, amount, price, total, fee, timestamp, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			trade.id, userID, trade.username, trade.pair, trade.tradeType, trade.amount, trade.price, trade.total, trade.fee, trade.timestamp, trade.status,
-		)
-		if err != nil {
-			return fmt.Errorf("error inserting demo trade %s: %v", trade.id, err)
 		}
 	}
 
@@ -486,83 +429,6 @@ func (db *DB) UpdateLiquidityPool(pool LiquidityPool) error {
 // DeleteLiquidityPool deletes a liquidity pool
 func (db *DB) DeleteLiquidityPool(id string) error {
 	_, err := db.db.Exec("DELETE FROM liquidity_pools WHERE id = ?", id)
-	return err
-}
-
-// GetAllTrades gets all trades
-func (db *DB) GetAllTrades() ([]Trade, error) {
-	rows, err := db.db.Query(`
-		SELECT id, user_id, user_username, pair, type, amount, price, total, fee, timestamp, status
-		FROM trades
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var trades []Trade
-	for rows.Next() {
-		var trade Trade
-		if err := rows.Scan(
-			&trade.ID, &trade.UserID, &trade.UserUsername, &trade.Pair, &trade.Type, &trade.Amount, &trade.Price, &trade.Total, &trade.Fee, &trade.Timestamp, &trade.Status,
-		); err != nil {
-			continue
-		}
-		trades = append(trades, trade)
-	}
-
-	return trades, nil
-}
-
-// GetTradesByUser gets trades by user ID
-func (db *DB) GetTradesByUser(userID int) ([]Trade, error) {
-	rows, err := db.db.Query(`
-		SELECT id, user_id, user_username, pair, type, amount, price, total, fee, timestamp, status
-		FROM trades
-		WHERE user_id = ?
-	`, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var trades []Trade
-	for rows.Next() {
-		var trade Trade
-		if err := rows.Scan(
-			&trade.ID, &trade.UserID, &trade.UserUsername, &trade.Pair, &trade.Type, &trade.Amount, &trade.Price, &trade.Total, &trade.Fee, &trade.Timestamp, &trade.Status,
-		); err != nil {
-			continue
-		}
-		trades = append(trades, trade)
-	}
-
-	return trades, nil
-}
-
-// GetTradeByID gets a trade by ID
-func (db *DB) GetTradeByID(id string) (*Trade, error) {
-	var trade Trade
-	err := db.db.QueryRow(`
-		SELECT id, user_id, user_username, pair, type, amount, price, total, fee, timestamp, status
-		FROM trades
-		WHERE id = ?
-	`, id).Scan(
-		&trade.ID, &trade.UserID, &trade.UserUsername, &trade.Pair, &trade.Type, &trade.Amount, &trade.Price, &trade.Total, &trade.Fee, &trade.Timestamp, &trade.Status,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &trade, nil
-}
-
-// CreateTrade creates a new trade
-func (db *DB) CreateTrade(trade Trade) error {
-	_, err := db.db.Exec(`
-		INSERT INTO trades (id, user_id, user_username, pair, type, amount, price, total, fee, timestamp, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, trade.ID, trade.UserID, trade.UserUsername, trade.Pair, trade.Type, trade.Amount, trade.Price, trade.Total, trade.Fee, trade.Timestamp, trade.Status)
 	return err
 }
 

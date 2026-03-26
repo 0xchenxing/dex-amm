@@ -804,6 +804,97 @@
       "artifacts": [
         "ISwapMigrator"
       ]
+    },
+    "C:\\Users\\chenyukang\\Desktop\\school\\dex-amm\\hardhat\\contracts\\SimpleGovernor.sol": {
+      "lastModificationDate": 1773992676801,
+      "contentHash": "05b5bec5f90a51cb28428e6769a5764b",
+      "sourceName": "contracts/SimpleGovernor.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata",
+                "devdoc",
+                "userdoc",
+                "storageLayout",
+                "evm.gasEstimates"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "metadata": {
+            "useLiteralContent": true
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "SimpleGovernor"
+      ]
+    },
+    "C:\\Users\\chenyukang\\Desktop\\school\\dex-amm\\hardhat\\contracts\\FlashArbitrageur.sol": {
+      "lastModificationDate": 1774016641983,
+      "contentHash": "7b9f783eea59a464f40c94c77fa46ac5",
+      "sourceName": "contracts/FlashArbitrageur.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata",
+                "devdoc",
+                "userdoc",
+                "storageLayout",
+                "evm.gasEstimates"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "metadata": {
+            "useLiteralContent": true
+          }
+        }
+      },
+      "imports": [
+        "./interfaces/IERC20.sol",
+        "./interfaces/ISwapCallee.sol",
+        "./interfaces/ISwapPair.sol",
+        "./interfaces/ISwapRouter02.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "FlashArbitrageur"
+      ]
     }
   }
 }

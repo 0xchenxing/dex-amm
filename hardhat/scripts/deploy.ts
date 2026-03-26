@@ -36,18 +36,37 @@ async function main() {
   console.log(`   Router 使用的 Factory 地址: ${await router.factory()}`);
   console.log(`   Router 使用的 WETH 地址: ${await router.WETH()}`);
 
-  // 5. 提供合约信息
+  // 5. 部署单一治理合约（内置延迟，无需 Timelock）
+  const VOTING_DELAY = 1;
+  const VOTING_PERIOD = 120;
+  const QUORUM = 3;
+  const MIN_DELAY_SECONDS = 5 * 60; // 5 分钟
+  console.log("\n5. 部署 SimpleGovernor 治理合约...");
+  const GovernorFactory = await ethers.getContractFactory("SimpleGovernor");
+  const governor = await GovernorFactory.deploy(VOTING_DELAY, VOTING_PERIOD, QUORUM, MIN_DELAY_SECONDS);
+  await governor.deployed();
+  console.log(`   SimpleGovernor 地址: ${governor.address}`);
+
+  // 6. 将 Factory 的 feeToSetter 迁移到治理合约
+  console.log("\n6. 迁移 Factory.feeToSetter 到 Governor...");
+  const handoverTx = await factory.setFeeToSetter(governor.address);
+  await handoverTx.wait();
+  console.log(`   Factory.feeToSetter 现为: ${await factory.feeToSetter()}`);
+
+  // 7. 提供合约信息
   console.log("\n=== 部署完成 ===");
   console.log("\n所有合约地址:");
   console.log(`- WETH: ${WETH_SEPOLIA_ADDRESS} (Sepolia 测试网现有合约)`);
   console.log(`- SwapFactory: ${factory.address}`);
   console.log(`- SwapRouter02: ${router.address}`);
-  
+  console.log(`- SimpleGovernor: ${governor.address}`);
+
   console.log("\n使用说明:");
   console.log("1. 通过 Router 合约添加流动性: router.addLiquidity() 或 router.addLiquidityETH()");
   console.log("2. 通过 Router 合约进行代币交换: router.swapExactTokensForTokens() 等");
-  console.log("3. 查看交易对信息: 可以通过 Factory 合约获取所有交易对");
-  
+  console.log("3. 治理: 在 Governor 创建提案，投票通过后 queue，延迟期满后 execute");
+  console.log("4. 将 frontend/src/config/contracts.ts 中 DEXAMM_GOVERNOR 设为上述 Governor 地址");
+
   console.log("\n注意:");
   console.log("- 在添加流动性前，需要先向 Router 合约授权代币");
   console.log("- 使用 Sepolia 测试网需要 Sepolia ETH 作为 Gas 费用");

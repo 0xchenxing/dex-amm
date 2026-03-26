@@ -1,4 +1,4 @@
-import type { User, LiquidityPool, Trade, SystemLog } from '../types/index';
+import type { User, LiquidityPool, SystemLog } from '../types/index';
 
 // API base URL
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -126,31 +126,6 @@ export const governanceAPI = {
     return fetchAPI(`/governance/proposals/${proposalId}/vote`, {
       method: 'POST',
       body: JSON.stringify({ voteType }),
-    });
-  },
-};
-
-// 扩展交易相关 API
-export const tradeAPI = {
-  getAll: async (): Promise<Trade[]> => {
-    return fetchAPI('/trades');
-  },
-  getByUser: async (userId: string): Promise<Trade[]> => {
-    return fetchAPI(`/trades/user/${userId}`);
-  },
-  getById: async (id: string): Promise<Trade> => {
-    return fetchAPI(`/trades/${id}`);
-  },
-  create: async (trade: Trade): Promise<Trade> => {
-    return fetchAPI('/trades', {
-      method: 'POST',
-      body: JSON.stringify(trade),
-    });
-  },
-  updateStatus: async (id: string, status: 'completed' | 'pending' | 'cancelled'): Promise<Trade> => {
-    return fetchAPI(`/trades/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
     });
   },
 };
